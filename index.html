@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoFinance | Modern Expense Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel -->
+        <div class="panel left-panel">
+            <div class="profile-section">
+                <div class="avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h3 class="welcome-text">Welcome back</h3>
+                <div class="date-display" id="currentDate"></div>
+            </div>
+
+            <div class="balance-card">
+                <div class="balance-header">
+                    <h2>Total Balance</h2>
+                    <div class="balance-actions">
+                        <button id="exportBtn" class="action-btn" title="Export Data">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button id="importBtn" class="action-btn" title="Import Data">
+                            <i class="fas fa-upload"></i>
+                        </button>
+                        <input type="file" id="importFile" accept=".json" style="display: none;">
+                    </div>
+                </div>
+                <div class="balance-amount" id="balanceAmount">$0.00</div>
+                <div class="balance-summary">
+                    <div class="summary-item income">
+                        <div class="summary-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="summary-details">
+                            <p class="summary-label">Income</p>
+                            <p class="summary-value" id="totalIncome">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="summary-item expense">
+                        <div class="summary-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="summary-details">
+                            <p class="summary-label">Expense</p>
+                            <p class="summary-value" id="totalExpense">$0.00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Expense Distribution</h3>
+                <div class="chart-placeholder" id="expenseChart">
+                    <div class="empty-chart-message">Add expenses to see distribution</div>
+                </div>
+            </div>
+
+            <div class="calculator-section">
+                <h3>Quick Calculator</h3>
+                <div class="calculator">
+                    <div class="calculator-display" id="calculatorDisplay">0</div>
+                    <div class="calculator-buttons">
+                        <button class="calc-btn clear" id="clearCalc">C</button>
+                        <button class="calc-btn operator">←</button>
+                        <button class="calc-btn operator">%</button>
+                        <button class="calc-btn operator">÷</button>
+                        <button class="calc-btn number">7</button>
+                        <button class="calc-btn number">8</button>
+                        <button class="calc-btn number">9</button>
+                        <button class="calc-btn operator">×</button>
+                        <button class="calc-btn number">4</button>
+                        <button class="calc-btn number">5</button>
+                        <button class="calc-btn number">6</button>
+                        <button class="calc-btn operator">-</button>
+                        <button class="calc-btn number">1</button>
+                        <button class="calc-btn number">2</button>
+                        <button class="calc-btn number">3</button>
+                        <button class="calc-btn operator">+</button>
+                        <button class="calc-btn number zero">0</button>
+                        <button class="calc-btn number">.</button>
+                        <button class="calc-btn equals">=</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="manual-section">
+                <div class="manual-header">
+                    <h3>User Manual</h3>
+                    <button id="toggleManual" class="action-btn" title="Toggle User Manual">
+                        <i class="fas fa-book"></i>
+                    </button>
+                </div>
+                <div class="manual-content" id="manualContent" style="display: none;">
+                    <h4>NeoFinance Expense Tracker Guide</h4>
+                    <p>Welcome to the NeoFinance Expense Tracker. This guide explains how to manage your finances using the application's features.</p>
+                    
+                    <details>
+                        <summary>Adding a Transaction</summary>
+                        <p>
+                            In the "Add New Transaction" form on the right panel:
+                            <ul>
+                                <li><strong>Date</strong>: Select a date (defaults to today).</li>
+                                <li><strong>Type</strong>: Choose "Income" or "Expense".</li>
+                                <li><strong>Amount</strong>: Enter a positive number (use the calculator below).</li>
+                                <li><strong>Category</strong>: Select a category (e.g., "Salary" for income, "Food" for expense).</li>
+                                <li><strong>Description</strong>: Add a brief description.</li>
+                                <li>Click <strong>Add Transaction</strong> or press <strong>Enter</strong>.</li>
+                            </ul>
+                            <strong>Response</strong>: The transaction appears at the top of the Transaction History with a green highlight for 2 seconds. A success notification shows. The balance, income, expense, and chart update instantly. Invalid inputs trigger an error notification and highlight fields in red.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Editing a Transaction</summary>
+                        <p>
+                            Click any transaction in the Transaction History (hover for a "Click to edit or delete" tooltip). In the modal:
+                            <ul>
+                                <li>Modify date, type, amount, category, or description.</li>
+                                <li>Click <strong>Save Changes</strong> or press <strong>Enter</strong>.</li>
+                            </ul>
+                            <strong>Response</strong>: The modal closes, and the updated transaction is highlighted. A success notification appears, and the balance and chart update.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Deleting a Transaction</summary>
+                        <p>
+                            Click a transaction to open the modal, then click <strong>Delete</strong>.
+                            <strong>Response</strong>: The transaction fades out (300ms animation), the modal closes, and a success notification shows. The list, balance, and chart update instantly without a confirmation prompt.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Using the Calculator</summary>
+                        <p>
+                            In the Quick Calculator section:
+                            <ul>
+                                <li>Click numbers and operators (+, −, ×, ÷, %) to calculate.</li>
+                                <li>Use <strong>C</strong> to clear, <strong>←</strong> for backspace.</li>
+                                <li>Click <strong>=</strong> to compute and auto-fill the transaction amount.</li>
+                            </ul>
+                            <strong>Response</strong>: The display updates with each input. After clicking =, the amount field in the transaction form updates if the result is positive.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Filtering and Searching</summary>
+                        <p>
+                            In the Transaction History:
+                            <ul>
+                                <li>Use the search bar to filter by description or category.</li>
+                                <li>Select a category or type from the dropdowns (e.g., "Food", "Income").</li>
+                            </ul>
+                            <strong>Response</strong>: The transaction list updates instantly to show matching transactions or an empty state message if none match.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Exporting and Importing</summary>
+                        <p>
+                            <ul>
+                                <li><strong>Export</strong>: Click the download icon in the Total Balance section to save a JSON file.</li>
+                                <li><strong>Import</strong>: Click the upload icon and select a JSON file.</li>
+                            </ul>
+                            <strong>Response</strong>: Export shows a success notification and downloads a file. Import adds new transactions, updates the UI, and shows a success notification. Invalid files trigger an error.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Viewing Summaries and Charts</summary>
+                        <p>
+                            The Total Balance section shows income, expense, and balance. The Expense Distribution chart displays expense categories.
+                            <strong>Response</strong>: Summaries update with a pulse animation on changes. The chart appears only with expenses, showing amounts and percentages on hover.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Switching Themes</summary>
+                        <p>
+                            Click the moon/sun icon in the top-right corner.
+                            <strong>Response</strong>: The interface toggles between light and dark themes, with the chart and colors updating instantly.
+                        </p>
+                    </details>
+
+                    <details>
+                        <summary>Keyboard Accessibility</summary>
+                        <p>
+                            <ul>
+                                <li>Press <strong>Escape</strong> to close the edit modal.</li>
+                                <li>Press <strong>Enter</strong> to submit forms.</li>
+                                <li>Use <strong>Tab</strong> to navigate fields and buttons.</li>
+                            </ul>
+                            <strong>Response</strong>: The modal closes, forms submit, and focus moves as expected.
+                        </p>
+                    </details>
+
+                    <p><strong>Troubleshooting</strong>: Ensure valid inputs for transactions. Export data to avoid loss (stored in localStorage). If the chart doesn't show, add expenses. For issues, clear browser data and re-import transactions.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="panel right-panel">
+            <div class="heading">
+                <h1>NeoFinance <span class="subtitle">Expense Tracker</span></h1>
+                <div class="theme-toggle">
+                    <i class="fas fa-moon" id="themeToggleIcon"></i>
+                </div>
+            </div>
+
+            <div class="transaction-form-container">
+                <h2>Add New Transaction</h2>
+                <form id="transactionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="transactionDate">Date</label>
+                            <input type="date" id="transactionDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transactionType">Type</label>
+                            <select id="transactionType" required>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="transactionAmount">Amount ($)</label>
+                            <input type="number" id="transactionAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transactionCategory">Category</label>
+                            <select id="transactionCategory" required>
+                                <!-- Income categories -->
+                                <option value="Salary" data-type="income">Salary</option>
+                                <option value="Freelance" data-type="income">Freelance</option>
+                                <option value="Investment" data-type="income">Investment</option>
+                                <option value="Gift" data-type="income">Gift</option>
+                                <option value="Other Income" data-type="income">Other Income</option>
+                                
+                                <!-- Expense categories -->
+                                <option value="Food" data-type="expense">Food</option>
+                                <option value="Transportation" data-type="expense">Transportation</option>
+                                <option value="Housing" data-type="expense">Housing</option>
+                                <option value="Entertainment" data-type="expense">Entertainment</option>
+                                <option value="Shopping" data-type="expense">Shopping</option>
+                                <option value="Utilities" data-type="expense">Utilities</option>
+                                <option value="Health" data-type="expense">Health</option>
+                                <option value="Education" data-type="expense">Education</option>
+                                <option value="Travel" data-type="expense">Travel</option>
+                                <option value="Other Expense" data-type="expense">Other Expense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="transactionDescription">Description</label>
+                        <input type="text" id="transactionDescription" placeholder="Enter transaction description" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancelTransaction" class="btn btn-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-add">Add Transaction</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="transactions-container">
+                <div class="transactions-header">
+                    <h2>Transaction History</h2>
+                    <div class="filter-controls">
+                        <div class="search-container">
+                            <input type="text" id="searchTransactions" placeholder="Search transactions...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <select id="categoryFilter">
+                            <option value="all">All Categories</option>
+                            <!-- Income categories -->
+                            <option value="Salary">Salary</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Investment">Investment</option>
+                            <option value="Gift">Gift</option>
+                            <option value="Other Income">Other Income</option>
+                            
+                            <!-- Expense categories -->
+                            <option value="Food">Food</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Housing">Housing</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Health">Health</option>
+                            <option value="Education">Education</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Other Expense">Other Expense</option>
+                        </select>
+                        <select id="typeFilter">
+                            <option value="all">All Types</option>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Transactions will be added here by JavaScript -->
+                    <div class="empty-state">
+                        <i class="fas fa-receipt empty-icon"></i>
+                        <p>No transactions yet. Add a transaction to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing transactions -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Transaction</h2>
+                <span class="close-modal">×</span>
+            </div>
+            <form id="editTransactionForm">
+                <input type="hidden" id="editTransactionId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editTransactionDate">Date</label>
+                        <input type="date" id="editTransactionDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransactionType">Type</label>
+                        <select id="editTransactionType" required>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editTransactionAmount">Amount ($)</label>
+                        <input type="number" id="editTransactionAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransactionCategory">Category</label>
+                        <select id="editTransactionCategory" required>
+                            <!-- Income categories -->
+                            <option value="Salary" data-type="income">Salary</option>
+                            <option value="Freelance" data-type="income">Freelance</option>
+                            <option value="Investment" data-type="income">Investment</option>
+                            <option value="Gift" data-type="income">Gift</option>
+                            <option value="Other Income" data-type="income">Other Income</option>
+                            
+                            <!-- Expense categories -->
+                            <option value="Food" data-type="expense">Food</option>
+                            <option value="Transportation" data-type="expense">Transportation</option>
+                            <option value="Housing" data-type="expense">Housing</option>
+                            <option value="Entertainment" data-type="expense">Entertainment</option>
+                            <option value="Shopping" data-type="expense">Shopping</option>
+                            <option value="Utilities" data-type="expense">Utilities</option>
+                            <option value="Health" data-type="expense">Health</option>
+                            <option value="Education" data-type="expense">Education</option>
+                            <option value="Travel" data-type="expense">Travel</option>
+                            <option value="Other Expense" data-type="expense">Other Expense</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editTransactionDescription">Description</label>
+                    <input type="text" id="editTransactionDescription" placeholder="Enter transaction description" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" id="deleteTransaction">Delete</button>
+                    <button type="submit" class="btn btn-add">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
