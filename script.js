@@ -1,849 +1,634 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize application
     initApp();
+    
+    // Fix theme toggle event
+    const themeToggleBtn = document.getElementById('themeToggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', toggleTheme);
+    }
+    
+    // Calculator popup open/close logic
+    const openCalcBtn = document.getElementById('openCalculatorBtn');
+    const calcModal = document.getElementById('calculatorModal');
+    const closeCalcModal = document.getElementById('closeCalculatorModal');
+    if (openCalcBtn && calcModal && closeCalcModal) {
+        openCalcBtn.addEventListener('click', function() {
+            calcModal.hidden = false;
+            calcModal.style.display = 'flex';
+        });
+        closeCalcModal.addEventListener('click', function() {
+            calcModal.hidden = true;
+            calcModal.style.display = 'none';
+        });
+        calcModal.addEventListener('click', function(e) {
+            if (e.target === calcModal) {
+                calcModal.hidden = true;
+                calcModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Fix user manual toggle button event
+    const manualBtn = document.getElementById('toggleManual');
+    if (manualBtn) {
+        manualBtn.addEventListener('click', function() {
+            const manualContent = document.getElementById('manualContent');
+            const toggleIcon = manualBtn.querySelector('i');
+            if (!manualContent || !toggleIcon) return;
+            if (manualContent.style.display === 'none' || manualContent.style.display === '') {
+                manualContent.style.display = 'block';
+                toggleIcon.classList.replace('fa-book', 'fa-book-open');
+                manualBtn.setAttribute('aria-expanded', 'true');
+            } else {
+                manualContent.style.display = 'none';
+                toggleIcon.classList.replace('fa-book-open', 'fa-book');
+                manualBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+    
+    // Export (robust, only once)
+    const exportButton = document.getElementById('exportBtn');
+    if (exportButton) {
+        exportButton.replaceWith(exportButton.cloneNode(true)); // Remove all previous listeners
+        const newExportButton = document.getElementById('exportBtn');
+        newExportButton.addEventListener('click', exportTransactions);
+        console.log('Export event listener attached');
+    }
+    
+    // Chart modal open/close logic
+    const openChartModalBtn = document.getElementById('openChartModalBtn');
+    const chartModal = document.getElementById('chartModal');
+    const closeChartModal = document.getElementById('closeChartModal');
+    if (openChartModalBtn && chartModal && closeChartModal) {
+        openChartModalBtn.addEventListener('click', function() {
+            chartModal.hidden = false;
+            chartModal.style.display = 'flex';
+            // Initialize or update chart when modal opens
+            if (!chart) initializeChart();
+            else updateChart();
+        });
+        closeChartModal.addEventListener('click', function() {
+            chartModal.hidden = true;
+            chartModal.style.display = 'none';
+        });
+        chartModal.addEventListener('click', function(e) {
+            if (e.target === chartModal) {
+                chartModal.hidden = true;
+                chartModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Trend modal open/close logic
+    const openTrendModalBtn = document.getElementById('openTrendModalBtn');
+    const trendModal = document.getElementById('trendModal');
+    const closeTrendModal = document.getElementById('closeTrendModal');
+    if (openTrendModalBtn && trendModal && closeTrendModal) {
+        openTrendModalBtn.addEventListener('click', function() {
+            trendModal.hidden = false;
+            trendModal.style.display = 'flex';
+            if (!trendChart) initializeTrendChart();
+            else updateTrendChart();
+        });
+        closeTrendModal.addEventListener('click', function() {
+            trendModal.hidden = true;
+            trendModal.style.display = 'none';
+        });
+        trendModal.addEventListener('click', function(e) {
+            if (e.target === trendModal) {
+                trendModal.hidden = true;
+                trendModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Call calculator integration setup
+    setupCalculatorIntegration();
 });
 
 // Global variables
 let transactions = [];
 let chart = null;
-let calculatorValue = '0';
-let calculatorOperator = null;
-let calculatorPreviousValue = null;
-let calculatorWaitingForOperand = false;
+let trendChart = null;
+let lastDeletedTransaction = null;
+let undoTimeoutId = null;
+
+// Constants
+const TRANSACTION_TYPES = {
+    INCOME: 'income',
+    EXPENSE: 'expense'
+};
+
+const NOTIFICATION_TYPES = {
+    SUCCESS: 'success',
+    ERROR: 'error',
+    INFO: 'info'
+};
+
+const CATEGORIES = {
+    INCOME: [
+        { value: 'Salary', icon: 'fa-money-bill-wave' },
+        { value: 'Freelance', icon: 'fa-laptop-code' },
+        { value: 'Investment', icon: 'fa-chart-line' },
+        { value: 'Gift', icon: 'fa-gift' },
+        { value: 'Other Income', icon: 'fa-coins' }
+    ],
+    EXPENSE: [
+        { value: 'Food', icon: 'fa-utensils' },
+        { value: 'Transportation', icon: 'fa-car' },
+        { value: 'Housing', icon: 'fa-home' },
+        { value: 'Entertainment', icon: 'fa-film' },
+        { value: 'Shopping', icon: 'fa-shopping-bag' },
+        { value: 'Utilities', icon: 'fa-lightbulb' },
+        { value: 'Health', icon: 'fa-heartbeat' },
+        { value: 'Education', icon: 'fa-graduation-cap' },
+        { value: 'Travel', icon: 'fa-plane' },
+        { value: 'Other Expense', icon: 'fa-wallet' }
+    ]
+};
 
 function initApp() {
-    // Set current date
-    setCurrentDate();
-    
-    // Load saved transactions
-    loadTransactions();
-    
-    // Update UI summaries
-    updateSummaryUI();
-    
-    // Initialize Chart
-    initializeChart();
-    
-    // Set up event listeners
-    setupEventListeners();
-    
-    // Initialize theme
-    initializeTheme();
+    try {
+        // Set current date
+        setCurrentDate();
+        
+        // Load saved transactions
+        loadTransactions();
+        
+        // Update UI summaries
+        updateSummaryUI();
+        
+        // Initialize Chart
+        initializeChart();
+        
+        // Set up event listeners
+        setupEventListeners();
+        
+        // Initialize theme
+        initializeTheme();
+        
+        // Update category options
+        updateCategoryOptions();
+    } catch (error) {
+        console.error('Initialization error:', error);
+        showNotification('Failed to initialize application', NOTIFICATION_TYPES.ERROR);
+    }
 }
 
+// ======================
+// DATE & TIME FUNCTIONS
+// ======================
 function setCurrentDate() {
-    const dateElement = document.getElementById('currentDate');
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const currentDate = new Date().toLocaleDateString(undefined, options);
-    dateElement.textContent = currentDate;
-    
-    // Set default date for transaction form to today
-    document.getElementById('transactionDate').valueAsDate = new Date();
+    try {
+        const dateElement = document.getElementById('currentDate');
+        if (!dateElement) return;
+        
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        const currentDate = new Date().toLocaleDateString(undefined, options);
+        dateElement.textContent = currentDate;
+        
+        // Set default date for transaction form to today
+        const dateInput = document.getElementById('transactionDate');
+        if (dateInput) {
+            dateInput.valueAsDate = new Date();
+        }
+    } catch (error) {
+        console.error('Date setting error:', error);
+    }
 }
 
+// ======================
+// DATA STORAGE FUNCTIONS
+// ======================
 function loadTransactions() {
-    const savedTransactions = localStorage.getItem('transactions');
-    if (savedTransactions) {
-        transactions = JSON.parse(savedTransactions);
-        renderTransactions();
+    try {
+        const savedTransactions = localStorage.getItem('transactions');
+        if (savedTransactions) {
+            transactions = JSON.parse(savedTransactions);
+            renderTransactions();
+        }
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        showNotification('Error loading saved transactions', NOTIFICATION_TYPES.ERROR);
     }
 }
 
 function saveTransactions() {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-}
-
-function setupEventListeners() {
-    // Transaction form submission
-    document.getElementById('transactionForm').addEventListener('submit', handleTransactionSubmit);
-    
-    // Transaction type change - update category options
-    document.getElementById('transactionType').addEventListener('change', updateCategoryOptions);
-    document.getElementById('editTransactionType').addEventListener('change', updateEditCategoryOptions);
-    
-    // Cancel button
-    document.getElementById('cancelTransaction').addEventListener('click', resetTransactionForm);
-    
-    // Theme toggle
-    document.getElementById('themeToggleIcon').parentElement.addEventListener('click', toggleTheme);
-    
-    // Search and filters
-    document.getElementById('searchTransactions').addEventListener('input', filterTransactions);
-    document.getElementById('categoryFilter').addEventListener('change', filterTransactions);
-    document.getElementById('typeFilter').addEventListener('change', filterTransactions);
-    
-    // Modal close button
-    document.querySelector('.close-modal').addEventListener('click', closeModal);
-    
-    // Edit transaction form
-    document.getElementById('editTransactionForm').addEventListener('submit', handleEditTransactionSubmit);
-    
-    // Delete transaction
-    document.getElementById('deleteTransaction').addEventListener('click', handleDeleteTransaction);
-    
-    // Export & Import
-    document.getElementById('exportBtn').addEventListener('click', exportTransactions);
-    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
-    document.getElementById('importFile').addEventListener('change', importTransactions);
-    
-    // Calculator
-    setupCalculator();
-    
-    // User manual toggle
-    document.getElementById('toggleManual').addEventListener('click', toggleManual);
-}
-
-function toggleManual() {
-    const manualContent = document.getElementById('manualContent');
-    const toggleIcon = document.getElementById('toggleManual').querySelector('i');
-    if (manualContent.style.display === 'none') {
-        manualContent.style.display = 'block';
-        toggleIcon.classList.remove('fa-book');
-        toggleIcon.classList.add('fa-book-open');
-    } else {
-        manualContent.style.display = 'none';
-        toggleIcon.classList.remove('fa-book-open');
-        toggleIcon.classList.add('fa-book');
+    try {
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+    } catch (error) {
+        console.error('Error saving transactions:', error);
+        showNotification('Error saving transactions', NOTIFICATION_TYPES.ERROR);
     }
 }
 
-function setupCalculator() {
-    const display = document.getElementById('calculatorDisplay');
-    const buttons = document.querySelectorAll('.calc-btn');
-    
-    buttons.forEach(button => {
-        button.addEventListener('click', () => {
-            if (button.classList.contains('number')) {
-                inputNumber(button.textContent);
-            } else if (button.classList.contains('operator')) {
-                inputOperator(button.textContent);
-            } else if (button.classList.contains('equals')) {
-                calculate();
-            } else if (button.classList.contains('clear')) {
-                clearCalculator();
-            }
-            updateCalculatorDisplay();
-        });
-    });
-    
-    function inputNumber(num) {
-        if (calculatorWaitingForOperand) {
-            calculatorValue = num;
-            calculatorWaitingForOperand = false;
-        } else {
-            calculatorValue = calculatorValue === '0' ? num : calculatorValue + num;
-        }
-    }
-    
-    function inputOperator(op) {
-        if (op === '←') {
-            calculatorValue = calculatorValue.toString().slice(0, -1);
-            if (calculatorValue === '') calculatorValue = '0';
-            return;
-        }
-        
-        const inputValue = parseFloat(calculatorValue);
-        
-        if (calculatorPreviousValue === null) {
-            calculatorPreviousValue = inputValue;
-        } else if (calculatorOperator) {
-            const result = calculate();
-            calculatorPreviousValue = result;
-            calculatorValue = String(result);
-        }
-        
-        calculatorWaitingForOperand = true;
-        calculatorOperator = op;
-    }
-    
-    function calculate() {
-        const inputValue = parseFloat(calculatorValue);
-        let result;
-        
-        if (calculatorPreviousValue === null || calculatorOperator === null) {
-            return inputValue;
-        }
-        
-        switch (calculatorOperator) {
-            case '+':
-                result = calculatorPreviousValue + inputValue;
-                break;
-            case '-':
-                result = calculatorPreviousValue - inputValue;
-                break;
-            case '×':
-                result = calculatorPreviousValue * inputValue;
-                break;
-            case '÷':
-                result = calculatorPreviousValue / inputValue;
-                break;
-            case '%':
-                result = calculatorPreviousValue % inputValue;
-                break;
-            default:
-                return inputValue;
-        }
-        
-        // Round to 2 decimal places to avoid floating point issues
-        result = Math.round((result + Number.EPSILON) * 100) / 100;
-        
-        calculatorValue = String(result);
-        calculatorOperator = null;
-        calculatorPreviousValue = null;
-        calculatorWaitingForOperand = true;
-        return result;
-    }
-    
-    function clearCalculator() {
-        calculatorValue = '0';
-        calculatorOperator = null;
-        calculatorPreviousValue = null;
-        calculatorWaitingForOperand = false;
-    }
-    
-    function updateCalculatorDisplay() {
-        display.textContent = calculatorValue;
-    }
-}
-
-function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.setAttribute('data-theme', 'dark');
-        document.getElementById('themeToggleIcon').classList.remove('fa-moon');
-        document.getElementById('themeToggleIcon').classList.add('fa-sun');
-    } else {
-        document.body.removeAttribute('data-theme');
-        document.getElementById('themeToggleIcon').classList.remove('fa-sun');
-        document.getElementById('themeToggleIcon').classList.add('fa-moon');
-    }
-}
-
-function toggleTheme() {
-    if (document.body.getAttribute('data-theme') === 'dark') {
-        document.body.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        document.getElementById('themeToggleIcon').classList.remove('fa-sun');
-        document.getElementById('themeToggleIcon').classList.add('fa-moon');
-    } else {
-        document.body.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        document.getElementById('themeToggleIcon').classList.remove('fa-moon');
-        document.getElementById('themeToggleIcon').classList.add('fa-sun');
-    }
-    
-    // Update chart with new theme colors if it exists
-    if (chart) {
-        updateChart();
-    }
-}
-
-function updateCategoryOptions() {
-    const transactionType = document.getElementById('transactionType').value;
-    const categorySelect = document.getElementById('transactionCategory');
-    
-    // Hide all options first
-    Array.from(categorySelect.options).forEach(option => {
-        const optionType = option.getAttribute('data-type');
-        if (optionType && optionType !== transactionType) {
-            option.style.display = 'none';
-        } else {
-            option.style.display = '';
-        }
-    });
-    
-    // Select first visible option
-    for (let i = 0; i < categorySelect.options.length; i++) {
-        if (categorySelect.options[i].style.display !== 'none') {
-            categorySelect.selectedIndex = i;
-            break;
-        }
-    }
-}
-
-function updateEditCategoryOptions() {
-    const transactionType = document.getElementById('editTransactionType').value;
-    const categorySelect = document.getElementById('editTransactionCategory');
-    
-    // Hide all options first
-    Array.from(categorySelect.options).forEach(option => {
-        const optionType = option.getAttribute('data-type');
-        if (optionType && optionType !== transactionType) {
-            option.style.display = 'none';
-        } else {
-            option.style.display = '';
-        }
-    });
-    
-    // Select first visible option
-    for (let i = 0; i < categorySelect.options.length; i++) {
-        if (categorySelect.options[i].style.display !== 'none') {
-            categorySelect.selectedIndex = i;
-            break;
-        }
-    }
-}
-
-function handleTransactionSubmit(e) {
-    e.preventDefault();
-    
-    // Get form values
-    const date = document.getElementById('transactionDate').value;
-    const type = document.getElementById('transactionType').value;
-    const amount = parseFloat(document.getElementById('transactionAmount').value);
-    const category = document.getElementById('transactionCategory').value;
-    const description = document.getElementById('transactionDescription').value;
-    
-    // Validate input
-    if (!date || !type || !amount || isNaN(amount) || amount <= 0 || !category || !description) {
-        showNotification('Please fill in all fields with valid values.', 'error');
-        return;
-    }
-    
-    // Create transaction object
-    const transaction = {
-        id: Date.now().toString(),
-        date,
-        type,
-        amount,
-        category,
-        description,
-        createdAt: new Date().toISOString()
-    };
-    
-    // Add to transactions array
-    transactions.unshift(transaction);
-    
-    // Save to localStorage
-    saveTransactions();
-    
-    // Update UI with real-time feedback
-    renderTransactions();
-    highlightNewTransaction(transaction.id);
-    updateSummaryUI();
-    updateChart();
-    
-    // Reset form
-    resetTransactionForm();
-    
-    // Show success message
-    showNotification('Transaction added successfully!', 'success');
-}
-
-function highlightNewTransaction(transactionId) {
-    const transactionElement = document.querySelector(`.transaction-item[data-id="${transactionId}"]`);
-    if (transactionElement) {
-        transactionElement.classList.add('highlight');
-        setTimeout(() => {
-            transactionElement.classList.remove('highlight');
-        }, 2000);
-    }
-}
-
-function resetTransactionForm() {
-    document.getElementById('transactionForm').reset();
-    document.getElementById('transactionDate').valueAsDate = new Date();
-    updateCategoryOptions();
-}
-
-function renderTransactions() {
-    const transactionsList = document.getElementById('transactionsList');
-    const emptyState = document.querySelector('.empty-state');
-    
-    // Check if there are transactions
-    if (transactions.length === 0) {
-        emptyState.style.display = 'flex';
-        transactionsList.innerHTML = '';
-        transactionsList.appendChild(emptyState);
-        return;
-    }
-    
-    // Hide empty state and render transactions
-    emptyState.style.display = 'none';
-    
-    // Get current filter values
-    const searchTerm = document.getElementById('searchTransactions').value.toLowerCase();
-    const categoryFilter = document.getElementById('categoryFilter').value;
-    const typeFilter = document.getElementById('typeFilter').value;
-    
-    // Filter transactions
-    let filteredTransactions = transactions.filter(transaction => {
-        const matchesSearch = transaction.description.toLowerCase().includes(searchTerm) || 
-                              transaction.category.toLowerCase().includes(searchTerm);
-        const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter;
-        const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
-        
-        return matchesSearch && matchesCategory && matchesType;
-    });
-    
-    // Create HTML for transactions
-    let transactionsHTML = '';
-    
-    filteredTransactions.forEach(transaction => {
-        const formattedDate = new Date(transaction.date).toLocaleDateString();
-        const amountClass = transaction.type === 'income' ? 'income-amount' : 'expense-amount';
-        const iconClass = transaction.type === 'income' ? 'income-icon' : 'expense-icon';
-        const indicatorClass = transaction.type === 'income' ? 'income-indicator' : 'expense-indicator';
-        const iconType = getCategoryIcon(transaction.category);
-        const formattedAmount = formatCurrency(transaction.amount);
-        
-        transactionsHTML += `
-            <div class="transaction-item fade-in" data-id="${transaction.id}" title="Click to edit or delete">
-                <div class="transaction-indicator ${indicatorClass}"></div>
-                <div class="transaction-icon ${iconClass}">
-                    <i class="fas ${iconType}"></i>
-                </div>
-                <div class="transaction-details">
-                    <div class="transaction-title">${transaction.description}</div>
-                    <div class="transaction-category">
-                        <span class="category-badge">${transaction.category}</span>
-                    </div>
-                </div>
-                <div class="transaction-date">
-                    <i class="far fa-calendar-alt"></i>
-                    <span>${formattedDate}</span>
-                </div>
-                <div class="transaction-amount ${amountClass}">
-                    ${transaction.type === 'income' ? '+' : '-'}${formattedAmount}
-                </div>
-            </div>
-        `;
-    });
-    
-    // Update DOM
-    transactionsList.innerHTML = transactionsHTML;
-    
-    // Add click event listeners to transaction items
-    document.querySelectorAll('.transaction-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const transactionId = item.getAttribute('data-id');
-            openEditModal(transactionId);
-        });
-    });
-}
-
-function getCategoryIcon(category) {
-    const icons = {
-        'Salary': 'fa-money-bill-wave',
-        'Freelance': 'fa-laptop-code',
-        'Investment': 'fa-chart-line',
-        'Gift': 'fa-gift',
-        'Other Income': 'fa-coins',
-        'Food': 'fa-utensils',
-        'Transportation': 'fa-car',
-        'Housing': 'fa-home',
-        'Entertainment': 'fa-film',
-        'Shopping': 'fa-shopping-bag',
-        'Utilities': 'fa-plug',
-        'Health': 'fa-heartbeat',
-        'Education': 'fa-graduation-cap',
-        'Travel': 'fa-plane',
-        'Other Expense': 'fa-receipt'
-    };
-    
-    return icons[category] || 'fa-receipt';
-}
-
-function formatCurrency(amount) {
-    return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-}
-
+// ======================
+// UI UPDATE FUNCTIONS
+// ======================
 function updateSummaryUI() {
-    // Calculate totals
-    let totalIncome = 0;
-    let totalExpense = 0;
-    
-    transactions.forEach(transaction => {
-        if (transaction.type === 'income') {
-            totalIncome += transaction.amount;
-        } else {
-            totalExpense += transaction.amount;
-        }
-    });
-    
-    const balance = totalIncome - totalExpense;
-    
-    // Update UI
-    document.getElementById('totalIncome').textContent = `$${formatCurrency(totalIncome)}`;
-    document.getElementById('totalExpense').textContent = `$${formatCurrency(totalExpense)}`;
-    document.getElementById('balanceAmount').textContent = `$${formatCurrency(balance)}`;
-    
-    // Set balance color based on value
-    if (balance < 0) {
-        document.getElementById('balanceAmount').style.color = 'var(--expense-color)';
-    } else {
-        document.getElementById('balanceAmount').style.color = 'white';
-    }
-}
-
-function initializeChart() {
-    const ctx = document.getElementById('expenseChart');
-    
-    // If there are no expenses, don't initialize chart
-    const hasExpenses = transactions.some(transaction => transaction.type === 'expense');
-    
-    if (!hasExpenses) {
-        return;
-    }
-    
-    // Get expense categories and amounts
-    const expensesByCategory = {};
-    transactions.forEach(transaction => {
-        if (transaction.type === 'expense') {
-            if (expensesByCategory[transaction.category]) {
-                expensesByCategory[transaction.category] += transaction.amount;
-            } else {
-                expensesByCategory[transaction.category] = transaction.amount;
-            }
-        }
-    });
-    
-    const categories = Object.keys(expensesByCategory);
-    const amounts = Object.values(expensesByCategory);
-    const backgroundColors = getChartColors(categories.length);
-    
-    // Create chart
-    chart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: categories,
-            datasets: [{
-                data: amounts,
-                backgroundColor: backgroundColors,
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: getComputedStyle(document.body).getPropertyValue('--text-color'),
-                        font: {
-                            size: 11
-                        },
-                        boxWidth: 12
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((value / total) * 100);
-                            return `${label}: $${formatCurrency(value)} (${percentage}%)`;
-                        }
-                    }
-                }
-            },
-            cutout: '70%',
-            animation: {
-                animateScale: true,
-                animateRotate: true
-            }
-        }
-    });
-}
-
-function updateChart() {
-    // If chart doesn't exist and we have expenses, initialize it
-    const hasExpenses = transactions.some(transaction => transaction.type === 'expense');
-    
-    if (!chart && hasExpenses) {
-        initializeChart();
-        return;
-    }
-    
-    // If no expenses, destroy chart if it exists
-    if (!hasExpenses && chart) {
-        chart.destroy();
-        chart = null;
-        document.getElementById('expenseChart').innerHTML = '<div class="empty-chart-message">Add expenses to see distribution</div>';
-        return;
-    }
-    
-    // If chart exists and we have expenses, update it
-    if (chart && hasExpenses) {
-        // Get expense categories and amounts
-        const expensesByCategory = {};
+    try {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
         transactions.forEach(transaction => {
-            if (transaction.type === 'expense') {
-                if (expensesByCategory[transaction.category]) {
-                    expensesByCategory[transaction.category] += transaction.amount;
-                } else {
-                    expensesByCategory[transaction.category] = transaction.amount;
-                }
+            if (transaction.type === TRANSACTION_TYPES.INCOME) {
+                totalIncome += transaction.amount;
+            } else {
+                totalExpense += transaction.amount;
             }
         });
         
-        const categories = Object.keys(expensesByCategory);
-        const amounts = Object.values(expensesByCategory);
-        const backgroundColors = getChartColors(categories.length);
+        const balance = totalIncome - totalExpense;
         
-        // Update chart data
-        chart.data.labels = categories;
-        chart.data.datasets[0].data = amounts;
-        chart.data.datasets[0].backgroundColor = backgroundColors;
+        // Update UI elements
+        updateElementWithAnimation('totalIncome', formatCurrency(totalIncome));
+        updateElementWithAnimation('totalExpense', formatCurrency(totalExpense));
+        updateElementWithAnimation('balanceAmount', formatCurrency(balance));
         
-        // Update chart options for theme
-        chart.options.plugins.legend.labels.color = getComputedStyle(document.body).getPropertyValue('--text-color');
-        
-        chart.update();
-    }
-}
-
-function getChartColors(count) {
-    const colors = getComputedStyle(document.documentElement).getPropertyValue('--chart-colors').split(',');
-    const result = [];
-    
-    for (let i = 0; i < count; i++) {
-        result.push(colors[i % colors.length].trim());
-    }
-    
-    return result;
-}
-
-function filterTransactions() {
-    renderTransactions();
-}
-
-function openEditModal(transactionId) {
-    const transaction = transactions.find(t => t.id === transactionId);
-    
-    if (!transaction) return;
-    
-    // Fill form fields
-    document.getElementById('editTransactionId').value = transaction.id;
-    document.getElementById('editTransactionDate').value = transaction.date;
-    document.getElementById('editTransactionType').value = transaction.type;
-    document.getElementById('editTransactionAmount').value = transaction.amount;
-    document.getElementById('editTransactionDescription').value = transaction.description;
-    
-    // Update category options based on type
-    updateEditCategoryOptions();
-    
-    // Set selected category
-    const categorySelect = document.getElementById('editTransactionCategory');
-    for (let i = 0; i < categorySelect.options.length; i++) {
-        if (categorySelect.options[i].value === transaction.category) {
-            categorySelect.selectedIndex = i;
-            break;
+        // Update balance color based on value
+        const balanceElement = document.getElementById('balanceAmount');
+        if (balanceElement) {
+            balanceElement.style.color = balance < 0 ? 'var(--expense-color)' : 'white';
         }
+    } catch (error) {
+        console.error('Error updating summary UI:', error);
     }
-    
-    // Show modal with animation
-    const modal = document.getElementById('editModal');
-    modal.style.display = 'flex';
-    modal.classList.add('animate__animated', 'animate__fadeIn');
-    setTimeout(() => {
-        modal.classList.remove('animate__animated', 'animate__fadeIn');
-    }, 500);
 }
 
-function closeModal() {
-    const modal = document.getElementById('editModal');
-    modal.classList.add('animate__animated', 'animate__fadeOut');
+function updateElementWithAnimation(elementId, newValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.classList.add('animate__animated', 'animate__pulse');
     setTimeout(() => {
-        modal.style.display = 'none';
-        modal.classList.remove('animate__animated', 'animate__fadeOut');
+        element.textContent = `$${newValue}`;
+        element.classList.remove('animate__animated', 'animate__pulse');
     }, 300);
 }
 
-function handleEditTransactionSubmit(e) {
-    e.preventDefault();
-    
-    // Get form values
-    const id = document.getElementById('editTransactionId').value;
-    const date = document.getElementById('editTransactionDate').value;
-    const type = document.getElementById('editTransactionType').value;
-    const amount = parseFloat(document.getElementById('editTransactionAmount').value);
-    const category = document.getElementById('editTransactionCategory').value;
-    const description = document.getElementById('editTransactionDescription').value;
-    
-    // Validate input
-    if (!date || !type || !amount || isNaN(amount) || amount <= 0 || !category || !description) {
-        showNotification('Please fill in all fields with valid values.', 'error');
-        return;
+function renderTransactions() {
+    try {
+        const transactionsList = document.getElementById('transactionsList');
+        const emptyState = document.querySelector('.empty-state');
+        
+        if (!transactionsList) return;
+        
+        // Show empty state if no transactions
+        if (!transactions || transactions.length === 0) {
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+                transactionsList.innerHTML = '';
+                transactionsList.appendChild(emptyState);
+            }
+            // Only set up transaction listeners, not all listeners
+            setupTransactionEventListeners();
+            return;
+        }
+        
+        // Hide empty state
+        if (emptyState) emptyState.style.display = 'none';
+        
+        // Get filter values
+        const searchTerm = (document.getElementById('searchTransactions')?.value || '').toLowerCase();
+        const categoryFilter = document.getElementById('categoryFilter')?.value || 'all';
+        const typeFilter = document.getElementById('typeFilter')?.value || 'all';
+        
+        // Filter transactions
+        const filteredTransactions = transactions.filter(transaction => {
+            const matchesSearch = transaction.description.toLowerCase().includes(searchTerm) ||
+                                 transaction.category.toLowerCase().includes(searchTerm);
+            const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter;
+            const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
+            return matchesSearch && matchesCategory && matchesType;
+        });
+        
+        // Generate HTML for transactions
+        transactionsList.innerHTML = filteredTransactions.map(transaction => 
+            createTransactionHTML(transaction)
+        ).join('');
+        
+        // Set up event listeners for transaction actions only
+        setupTransactionEventListeners();
+    } catch (error) {
+        console.error('Error rendering transactions:', error);
     }
+}
+
+function createTransactionHTML(transaction) {
+    const formattedDate = new Date(transaction.date).toLocaleDateString();
+    const amountClass = transaction.type === TRANSACTION_TYPES.INCOME ? 'income-amount' : 'expense-amount';
+    const iconClass = transaction.type === TRANSACTION_TYPES.INCOME ? 'income-icon' : 'expense-icon';
+    const indicatorClass = transaction.type === TRANSACTION_TYPES.INCOME ? 'income-indicator' : 'expense-indicator';
+    const iconType = getCategoryIcon(transaction.category);
+    const formattedAmount = formatCurrency(transaction.amount);
     
-    // Find transaction index
-    const index = transactions.findIndex(t => t.id === id);
+    return `
+        <div class="transaction-item fade-in" data-id="${transaction.id}" tabindex="0" 
+             aria-label="Transaction: ${transaction.description}, amount: ${formattedAmount}">
+            <div class="transaction-indicator ${indicatorClass}"></div>
+            <div class="transaction-icon ${iconClass}">
+                <i class="fas ${iconType}"></i>
+            </div>
+            <div class="transaction-details">
+                <div class="transaction-title">${transaction.description}</div>
+                <div class="transaction-category">
+                    <span class="category-badge">${transaction.category}</span>
+                </div>
+            </div>
+            <div class="transaction-date">
+                <i class="far fa-calendar-alt"></i>
+                <span>${formattedDate}</span>
+            </div>
+            <div class="transaction-amount ${amountClass}">
+                ${transaction.type === TRANSACTION_TYPES.INCOME ? '+' : '-'}${formattedAmount}
+            </div>
+            <div class="transaction-actions" role="group" aria-label="Transaction actions">
+                <button class="action-btn edit-btn" title="Edit" aria-label="Edit transaction">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" title="Delete" aria-label="Delete transaction">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function setupTransactionEventListeners() {
+    const transactionsList = document.getElementById('transactionsList');
+    if (!transactionsList) return;
     
-    if (index !== -1) {
-        // Update transaction
-        transactions[index] = {
-            ...transactions[index],
+    // Event delegation for transaction actions
+    transactionsList.onclick = function(e) {
+        const item = e.target.closest('.transaction-item');
+        if (!item) return;
+        
+        const transactionId = item.getAttribute('data-id');
+        
+        if (e.target.closest('.edit-btn')) {
+            openEditModal(transactionId);
+        } else if (e.target.closest('.delete-btn')) {
+            handleDeleteTransactionById(transactionId);
+        }
+    };
+}
+
+// ======================
+// TRANSACTION FUNCTIONS
+// ======================
+function handleTransactionSubmit(e) {
+    e.preventDefault();
+    let transaction = null;
+    try {
+        // Get form values
+        const date = document.getElementById('transactionDate').value;
+        const type = document.getElementById('transactionType').value;
+        const amount = parseFloat(document.getElementById('transactionAmount').value);
+        const category = document.getElementById('transactionCategory').value;
+        const description = document.getElementById('transactionDescription').value.trim();
+        
+        // Validate input
+        if (!validateTransactionInput(date, type, amount, category, description)) {
+            return;
+        }
+        
+        // Create transaction object
+        transaction = {
+            id: Date.now().toString(),
             date,
             type,
             amount,
             category,
             description,
-            updatedAt: new Date().toISOString()
+            createdAt: new Date().toISOString()
         };
         
-        // Save to localStorage
+        // Add to transactions array
+        transactions.unshift(transaction);
         saveTransactions();
-        
-        // Update UI
+    } catch (error) {
+        console.error('Error submitting transaction:', error);
+        showNotification('Error adding transaction', NOTIFICATION_TYPES.ERROR);
+        return;
+    }
+    // UI updates (separate try/catch for each, only show error if critical step fails)
+    try {
         renderTransactions();
-        highlightNewTransaction(id); // Highlight updated transaction
+    } catch (error) {
+        console.error('Error rendering transactions:', error);
+        showNotification('Transaction added, but error updating UI', NOTIFICATION_TYPES.ERROR);
+        return;
+    }
+    try {
         updateSummaryUI();
-        updateChart();
+    } catch (error) {
+        console.error('Error updating summary UI:', error);
+        showNotification('Transaction added, but error updating UI', NOTIFICATION_TYPES.ERROR);
+        return;
+    }
+    try {
+        updateAllCharts();
+    } catch (error) {
+        console.warn('Error updating charts:', error);
+    }
+    try {
+        highlightNewTransaction(transaction.id);
+    } catch (error) {
+        console.warn('Error highlighting new transaction:', error);
+    }
+    try {
+        resetTransactionForm();
+    } catch (error) {
+        console.warn('Error resetting transaction form:', error);
+    }
+    showNotification('Transaction added successfully!', NOTIFICATION_TYPES.SUCCESS);
+}
+
+function validateTransactionInput(date, type, amount, category, description) {
+    if (!date || !type || !amount || isNaN(amount) || amount <= 0 || !category || !description) {
+        showNotification('Please fill in all fields with valid values.', NOTIFICATION_TYPES.ERROR);
+        return false;
+    }
+    
+    // Highlight invalid fields
+    const highlightField = (id, isValid) => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.classList.toggle('invalid', !isValid);
+        }
+    };
+    
+    highlightField('transactionDate', !!date);
+    highlightField('transactionAmount', !isNaN(amount) && amount > 0);
+    highlightField('transactionCategory', !!category);
+    highlightField('transactionDescription', !!description);
+    
+    return true;
+}
+
+function addActionBadge(transactionId, text, badgeClass = '') {
+    const item = document.querySelector(`.transaction-item[data-id="${transactionId}"]`);
+    if (!item) return;
+    let badge = document.createElement('span');
+    badge.className = `action-badge ${badgeClass}`;
+    badge.textContent = text;
+    item.querySelector('.transaction-title').appendChild(badge);
+    setTimeout(() => badge.remove(), 1200);
+}
+
+// Override highlightNewTransaction to use .adding class and badge
+function highlightNewTransaction(transactionId) {
+    const transactionElement = document.querySelector(`.transaction-item[data-id="${transactionId}"]`);
+    if (transactionElement) {
+        transactionElement.classList.add('adding');
+        addActionBadge(transactionId, 'Added');
+        setTimeout(() => {
+            transactionElement.classList.remove('adding');
+        }, 700);
+    }
+}
+
+// Enhance edit to show .editing class and badge
+function openEditModal(transactionId) {
+    try {
+        const transaction = transactions.find(t => t.id === transactionId);
+        if (!transaction) return;
         
-        // Close modal
-        closeModal();
+        // Fill form with transaction data
+        document.getElementById('editTransactionId').value = transaction.id;
+        document.getElementById('editTransactionDate').value = transaction.date;
+        document.getElementById('editTransactionType').value = transaction.type;
+        document.getElementById('editTransactionAmount').value = transaction.amount;
+        document.getElementById('editTransactionCategory').value = transaction.category;
+        document.getElementById('editTransactionDescription').value = transaction.description;
         
-        // Show success message
-        showNotification('Transaction updated successfully!', 'success');
+        // Update category options based on type
+        updateEditCategoryOptions();
+        
+        // Show modal
+        document.getElementById('editModal').style.display = 'flex';
+        
+        // Add editing highlight
+        setTimeout(() => {
+            const el = document.querySelector(`.transaction-item[data-id="${transactionId}"]`);
+            if (el) {
+                el.classList.add('editing');
+                addActionBadge(transactionId, 'Editing', '');
+                setTimeout(() => el.classList.remove('editing'), 1200);
+            }
+        }, 100);
+    } catch (error) {
+        console.error('Error opening edit modal:', error);
+        showNotification('Error opening transaction editor', NOTIFICATION_TYPES.ERROR);
+    }
+}
+
+// Enhance handleEditTransactionSubmit to show badge
+function handleEditTransactionSubmit(e) {
+    e.preventDefault();
+    
+    try {
+        // Get form values
+        const id = document.getElementById('editTransactionId').value;
+        const date = document.getElementById('editTransactionDate').value;
+        const type = document.getElementById('editTransactionType').value;
+        const amount = parseFloat(document.getElementById('editTransactionAmount').value);
+        const category = document.getElementById('editTransactionCategory').value;
+        const description = document.getElementById('editTransactionDescription').value.trim();
+        
+        // Validate input
+        if (!validateTransactionInput(date, type, amount, category, description)) {
+            return;
+        }
+        
+        // Find and update transaction
+        const index = transactions.findIndex(t => t.id === id);
+        if (index !== -1) {
+            transactions[index] = {
+                ...transactions[index],
+                date,
+                type,
+                amount,
+                category,
+                description
+            };
+            
+            // Save and update UI
+            saveTransactions();
+            renderTransactions();
+            updateSummaryUI();
+            updateAllCharts();
+            closeModal();
+            
+            setTimeout(() => addActionBadge(id, 'Edited', ''), 200);
+            showNotification('Transaction updated successfully!', NOTIFICATION_TYPES.SUCCESS);
+        }
+    } catch (error) {
+        console.error('Error updating transaction:', error);
+        showNotification('Error updating transaction', NOTIFICATION_TYPES.ERROR);
     }
 }
 
 function handleDeleteTransaction() {
-    const id = document.getElementById('editTransactionId').value;
-    
-    // Find transaction index
-    const index = transactions.findIndex(t => t.id === id);
-    
-    if (index !== -1) {
-        // Mark transaction for animation
+    try {
+        const id = document.getElementById('editTransactionId').value;
+        handleDeleteTransactionById(id);
+        closeModal();
+    } catch (error) {
+        console.error('Error deleting transaction:', error);
+        showNotification('Error deleting transaction', NOTIFICATION_TYPES.ERROR);
+    }
+}
+
+function handleDeleteTransactionById(id) {
+    try {
+        const index = transactions.findIndex(t => t.id === id);
+        if (index === -1) return;
+        const deleted = transactions[index];
         const transactionElement = document.querySelector(`.transaction-item[data-id="${id}"]`);
         if (transactionElement) {
             transactionElement.classList.add('removing');
-            
-            // Remove after animation
+            addActionBadge(id, 'Deleted', '');
             setTimeout(() => {
-                // Remove transaction
                 transactions.splice(index, 1);
-                
-                // Save to localStorage
                 saveTransactions();
-                
-                // Update UI
                 renderTransactions();
                 updateSummaryUI();
-                updateChart();
-                
-                // Close modal
-                closeModal();
-                
-                // Show success message
-                showNotification('Transaction deleted successfully!', 'success');
-            }, 300);
+                updateAllCharts();
+                showUndoDeleteNotification(deleted);
+            }, 400);
         } else {
-            // If element not found, just remove
             transactions.splice(index, 1);
             saveTransactions();
             renderTransactions();
             updateSummaryUI();
-            updateChart();
-            closeModal();
-            showNotification('Transaction deleted successfully!', 'success');
+            updateAllCharts();
+            showUndoDeleteNotification(deleted);
         }
+    } catch (error) {
+        console.error('Error deleting transaction:', error);
+        showNotification('Error deleting transaction', NOTIFICATION_TYPES.ERROR);
     }
 }
 
-function exportTransactions() {
-    if (transactions.length === 0) {
-        showNotification('No transactions to export.', 'error');
-        return;
-    }
-    
-    // Create export data object with metadata
-    const exportData = {
-        appName: 'NeoFinance Expense Tracker',
-        exportDate: new Date().toISOString(),
-        version: '1.0',
-        transactions: transactions
-    };
-    
-    // Convert to JSON string
-    const jsonData = JSON.stringify(exportData, null, 2);
-    
-    // Create blob and download link
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    
-    // Generate filename with date
-    const date = new Date();
-    const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-    
-    a.href = url;
-    a.download = `neofinance_transactions_${formattedDate}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('Transactions exported successfully!', 'success');
-}
-
-function importTransactions(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.name.endsWith('.json')) {
-        showNotification('Please select a valid JSON file.', 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const importedData = JSON.parse(e.target.result);
-            
-            // Validate imported data structure
-            if (!importedData.transactions || !Array.isArray(importedData.transactions)) {
-                showNotification('Invalid data format.', 'error');
-                return;
-            }
-            
-            // Validate transaction objects
-            const validTransactions = importedData.transactions.filter(t => 
-                t.id && t.date && t.type && t.amount && t.category && t.description
-            );
-            
-            if (validTransactions.length === 0) {
-                showNotification('No valid transactions found in the file.', 'error');
-                return;
-            }
-            
-            // Merge with existing transactions (avoid duplicates)
-            const existingIds = new Set(transactions.map(t => t.id));
-            const newTransactions = validTransactions.filter(t => !existingIds.has(t.id));
-            
-            transactions = [...newTransactions, ...transactions];
-            saveTransactions();
-            renderTransactions();
-            updateSummaryUI();
-            updateChart();
-            
-            showNotification(`Successfully imported ${newTransactions.length} transactions!`, 'success');
-            
-            // Reset file input
-            document.getElementById('importFile').value = '';
-        } catch (error) {
-            showNotification('Error reading file. Please ensure it\'s a valid JSON file.', 'error');
-            console.error('Import error:', error);
-        }
-    };
-    
-    reader.readAsText(file);
-}
-
-function showNotification(message, type) {
+function showUndoDeleteNotification(transaction) {
+    lastDeletedTransaction = transaction;
+    // Remove any existing undo notification
+    const existing = document.getElementById('undo-individual-notification');
+    if (existing) existing.remove();
     // Create notification element
     const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    
-    // Style notification
+    notification.className = 'notification success';
+    notification.id = 'undo-individual-notification';
+    notification.setAttribute('role', 'alert');
+    notification.innerHTML = `Transaction deleted. <button id="undoIndividualBtn" style="margin-left:12px;padding:4px 12px;background:#fff;color:#3ecf8e;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Undo</button>`;
     Object.assign(notification.style, {
         position: 'fixed',
         bottom: '20px',
@@ -851,266 +636,642 @@ function showNotification(message, type) {
         padding: '15px 25px',
         borderRadius: '8px',
         color: '#fff',
-        backgroundColor: type === 'success' ? 'var(--income-color)' : 'var(--expense-color)',
+        backgroundColor: 'var(--income-color)',
         boxShadow: 'var(--shadow)',
         zIndex: '1000',
         opacity: '0',
         transition: 'opacity 0.3s ease, transform 0.3s ease',
-        transform: 'translateY(20px)'
+        transform: 'translateY(20px)',
+        minWidth: '200px',
+        maxWidth: '400px'
     });
-    
     document.body.appendChild(notification);
-    
-    // Animate in
     setTimeout(() => {
         notification.style.opacity = '1';
         notification.style.transform = 'translateY(0)';
     }, 100);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 3000);
+    // Remove after 8 seconds
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = setTimeout(() => {
+        if (notification.parentNode) notification.parentNode.removeChild(notification);
+        lastDeletedTransaction = null;
+    }, 8000);
+    // Undo button logic
+    document.getElementById('undoIndividualBtn').onclick = function() {
+        if (lastDeletedTransaction) {
+            transactions.unshift(lastDeletedTransaction);
+            saveTransactions();
+            renderTransactions();
+            updateSummaryUI();
+            updateAllCharts();
+            showNotification('Transaction restored!', NOTIFICATION_TYPES.SUCCESS);
+        }
+        if (notification.parentNode) notification.parentNode.removeChild(notification);
+        lastDeletedTransaction = null;
+        clearTimeout(undoTimeoutId);
+    };
 }
 
-// Keyboard accessibility
-document.addEventListener('keydown', function(event) {
-    // Close modal with Escape key
-    if (event.key === 'Escape' && document.getElementById('editModal').style.display === 'flex') {
-        closeModal();
+// ======================
+// CATEGORY FUNCTIONS
+// ======================
+function updateCategoryOptions() {
+    try {
+        const typeSelect = document.getElementById('transactionType');
+        const categorySelect = document.getElementById('transactionCategory');
+        
+        if (!typeSelect || !categorySelect) return;
+        
+        const type = typeSelect.value;
+        const categories = type === TRANSACTION_TYPES.INCOME ? CATEGORIES.INCOME : CATEGORIES.EXPENSE;
+        
+        // Clear existing options
+        categorySelect.innerHTML = '';
+        
+        // Add new options
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.value;
+            option.textContent = category.value;
+            option.dataset.type = type;
+            categorySelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error updating category options:', error);
     }
-    
-    // Submit transaction form with Enter key when focused
-    if (event.key === 'Enter' && document.activeElement.closest('#transactionForm')) {
-        document.getElementById('transactionForm').dispatchEvent(new Event('submit'));
-    }
-    
-    // Submit edit form with Enter key when focused
-    if (event.key === 'Enter' && document.activeElement.closest('#editTransactionForm')) {
-        document.getElementById('editTransactionForm').dispatchEvent(new Event('submit'));
-    }
-});
+}
 
-// Prevent modal from closing when clicking inside content
-document.querySelector('.modal-content').addEventListener('click', function(e) {
-    e.stopPropagation();
-});
-
-// Close modal when clicking outside
-document.getElementById('editModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
-
-// Update transaction amount field to accept calculator result
-document.querySelector('.calc-btn.equals').addEventListener('click', function() {
-    const calculatorResult = parseFloat(calculatorValue);
-    if (!isNaN(calculatorResult) && calculatorResult > 0) {
-        document.getElementById('transactionAmount').value = calculatorResult.toFixed(2);
-    }
-});
-
-// Handle window resize for chart responsiveness
-window.addEventListener('resize', function() {
-    if (chart) {
-        chart.resize();
-    }
-});
-
-// Initialize category options on load
-updateCategoryOptions();
-
-// Handle form input validation in real-time
-document.querySelectorAll('#transactionForm input, #transactionForm select').forEach(input => {
-    input.addEventListener('input', function() {
-        if (this.type === 'number') {
-            if (this.value <= 0) {
-                this.classList.add('invalid');
-            } else {
-                this.classList.remove('invalid');
-            }
-        } else if (this.required && !this.value) {
-            this.classList.add('invalid');
-        } else {
-            this.classList.remove('invalid');
+function updateEditCategoryOptions() {
+    try {
+        const typeSelect = document.getElementById('editTransactionType');
+        const categorySelect = document.getElementById('editTransactionCategory');
+        
+        if (!typeSelect || !categorySelect) return;
+        
+        const type = typeSelect.value;
+        const categories = type === TRANSACTION_TYPES.INCOME ? CATEGORIES.INCOME : CATEGORIES.EXPENSE;
+        
+        // Save current value
+        const currentValue = categorySelect.value;
+        
+        // Clear existing options
+        categorySelect.innerHTML = '';
+        
+        // Add new options
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.value;
+            option.textContent = category.value;
+            option.dataset.type = type;
+            categorySelect.appendChild(option);
+        });
+        
+        // Restore current value if it exists in new options
+        if (categories.some(c => c.value === currentValue)) {
+            categorySelect.value = currentValue;
         }
-    });
-});
+    } catch (error) {
+        console.error('Error updating edit category options:', error);
+    }
+}
 
-// Add CSS for invalid inputs and highlight animation
-const style = document.createElement('style');
-style.textContent = `
-    .invalid {
-        border-color: var(--expense-color) !important;
-        box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2) !important;
-    }
+function getCategoryIcon(category) {
+    // Search in income categories
+    const incomeCategory = CATEGORIES.INCOME.find(c => c.value === category);
+    if (incomeCategory) return incomeCategory.icon;
     
-    .notification {
-        min-width: 200px;
-        max-width: 400px;
-    }
+    // Search in expense categories
+    const expenseCategory = CATEGORIES.EXPENSE.find(c => c.value === category);
+    if (expenseCategory) return expenseCategory.icon;
     
-    .highlight {
-        background-color: rgba(62, 207, 142, 0.1) !important;
-        border: 2px solid var(--income-color) !important;
-        animation: highlightPulse 0.5s ease-in-out 2;
-    }
-    
-    @keyframes highlightPulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.02); }
-        100% { transform: scale(1); }
-    }
-    
-    .manual-section {
-        margin-top: 20px;
-        padding: 20px;
-        background: var(--card-background);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-    }
-    
-    .manual-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .manual-content {
-        margin-top: 10px;
-        font-size: 14px;
-        color: var(--text-color);
-    }
-    
-    .manual-content h4 {
-        margin-bottom: 10px;
-    }
-    
-    .manual-content details {
-        margin: 10px 0;
-        padding: 10px;
-        background: var(--background);
-        border-radius: 4px;
-    }
-    
-    .manual-content summary {
-        cursor: pointer;
-        font-weight: bold;
-    }
-    
-    .manual-content p, .manual-content ul {
-        margin: 10px 0;
-    }
-    
-    .manual-content ul {
-        padding-left: 20px;
-    }
-`;
-document.head.appendChild(style);
+    // Default icon
+    return 'fa-tag';
+}
 
-// Handle transaction sorting (optional feature)
-function sortTransactions(criteria = 'date') {
-    transactions.sort((a, b) => {
-        switch (criteria) {
-            case 'date':
-                return new Date(b.date) - new Date(a.date);
-            case 'amount':
-                return b.amount - a.amount;
-            case 'category':
-                return a.category.localeCompare(b.category);
-            default:
-                return 0;
-        }
-    });
+// ======================
+// FILTER & SEARCH FUNCTIONS
+// ======================
+function filterTransactions() {
     renderTransactions();
 }
 
-// Add sort functionality to transaction header
-document.querySelector('.transactions-header h2').addEventListener('click', function() {
-    sortTransactions('date');
-});
+// ======================
+// MODAL FUNCTIONS
+// ======================
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
 
-// Handle data backup to cloud (mock implementation)
-function backupToCloud() {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            try {
-                // Mock cloud backup
-                console.log('Backing up to cloud:', transactions.length, 'transactions');
-                resolve(true);
-            } catch (error) {
-                reject(error);
+// ======================
+// CHART FUNCTIONS
+// ======================
+function initializeChart() {
+    try {
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Expenses by Category',
+                    data: [],
+                    backgroundColor: [],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                return `${label}: $${formatCurrency(value)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Amount ($)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Category' }
+                    }
+                }
             }
-        }, 1000);
-    });
-}
-
-// Auto-save to cloud every 5 minutes
-setInterval(() => {
-    if (transactions.length > 0) {
-        backupToCloud()
-            .then(() => {
-                console.log('Cloud backup successful');
-            })
-            .catch(error => {
-                console.error('Cloud backup failed:', error);
-            });
+        });
+        updateChart();
+    } catch (error) {
+        console.error('Error initializing chart:', error);
     }
-}, 300000);
-
-// Handle currency formatting based on user locale
-function getUserLocale() {
-    return navigator.language || 'en-US';
 }
 
-function formatCurrencyWithLocale(amount) {
-    return new Intl.NumberFormat(getUserLocale(), {
-        style: 'currency',
-        currency: 'USD'
-    }).format(amount);
-}
-
-// Update existing formatCurrency to use locale
-function formatCurrency(amount) {
-    return formatCurrencyWithLocale(amount).replace(/USD|\$/g, '').trim();
-}
-
-// Add animation for balance updates
-function animateBalanceUpdate(elementId, newValue) {
-    const element = document.getElementById(elementId);
-    element.classList.add('animate__animated', 'animate__pulse');
-    setTimeout(() => {
-        element.textContent = `$${formatCurrency(newValue)}`;
-        element.classList.remove('animate__animated', 'animate__pulse');
-    }, 300);
-}
-
-// Update updateSummaryUI to use animations
-function updateSummaryUI() {
-    let totalIncome = 0;
-    let totalExpense = 0;
-    
-    transactions.forEach(transaction => {
-        if (transaction.type === 'income') {
-            totalIncome += transaction.amount;
-        } else {
-            totalExpense += transaction.amount;
+function updateChart() {
+    try {
+        if (!chart) return;
+        const expenses = transactions.filter(t => t.type === TRANSACTION_TYPES.EXPENSE);
+        if (expenses.length === 0) {
+            document.getElementById('expenseChart').style.display = 'none';
+            document.querySelector('.chart-placeholder .empty-chart-message').style.display = 'flex';
+            return;
         }
-    });
-    
-    const balance = totalIncome - totalExpense;
-    
-    // Animate updates
-    animateBalanceUpdate('totalIncome', totalIncome);
-    animateBalanceUpdate('totalExpense', totalExpense);
-    animateBalanceUpdate('balanceAmount', balance);
-    
-    // Update balance color
-    const balanceElement = document.getElementById('balanceAmount');
-    balanceElement.style.color = balance < 0 ? 'var(--expense-color)' : 'white';
+        document.getElementById('expenseChart').style.display = 'block';
+        document.querySelector('.chart-placeholder .empty-chart-message').style.display = 'none';
+        // Group by category
+        const categories = {};
+        expenses.forEach(expense => {
+            if (!categories[expense.category]) {
+                categories[expense.category] = 0;
+            }
+            categories[expense.category] += expense.amount;
+        });
+        const labels = Object.keys(categories);
+        const data = Object.values(categories);
+        const backgroundColors = generateChartColors(labels.length);
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.data.datasets[0].backgroundColor = backgroundColors;
+        chart.update();
+    } catch (error) {
+        console.error('Error updating chart:', error);
+    }
 }
+
+function initializeTrendChart() {
+    try {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+        trendChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: [],
+                        backgroundColor: '#3ecf8e',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Expense',
+                        data: [],
+                        backgroundColor: '#ff6b6b',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${formatCurrency(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Month' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Amount ($)' }
+                    }
+                }
+            }
+        });
+        updateTrendChart();
+    } catch (error) {
+        console.error('Error initializing trend chart:', error);
+    }
+}
+
+function updateTrendChart() {
+    try {
+        if (!trendChart) return;
+        // Group by month
+        const byMonth = {};
+        transactions.forEach(t => {
+            const d = new Date(t.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            if (!byMonth[key]) byMonth[key] = { income: 0, expense: 0 };
+            if (t.type === TRANSACTION_TYPES.INCOME) byMonth[key].income += Number(t.amount);
+            if (t.type === TRANSACTION_TYPES.EXPENSE) byMonth[key].expense += Number(t.amount);
+        });
+        const months = Object.keys(byMonth).sort();
+        const incomeData = months.map(m => byMonth[m].income);
+        const expenseData = months.map(m => byMonth[m].expense);
+        trendChart.data.labels = months.length ? months : [];
+        trendChart.data.datasets[0].data = incomeData;
+        trendChart.data.datasets[1].data = expenseData;
+        trendChart.update();
+        // Show/hide empty message
+        document.getElementById('trendChart').style.display = months.length ? 'block' : 'none';
+        document.getElementById('trendEmptyMsg').style.display = months.length ? 'none' : 'flex';
+    } catch (error) {
+        console.error('Error updating trend chart:', error);
+    }
+}
+
+// ======================
+// THEME FUNCTIONS
+// ======================
+function initializeTheme() {
+    try {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+    } catch (error) {
+        console.error('Error initializing theme:', error);
+    }
+}
+
+function toggleTheme() {
+    try {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+    } catch (error) {
+        console.error('Error toggling theme:', error);
+    }
+}
+
+function setTheme(theme) {
+    try {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        const themeIcon = document.getElementById('themeToggleIcon');
+        if (themeIcon) {
+            themeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    } catch (error) {
+        console.error('Error setting theme:', error);
+    }
+}
+
+// ======================
+// IMPORT/EXPORT FUNCTIONS
+// ======================
+function exportTransactions() {
+    try {
+        if (transactions.length === 0) {
+            showNotification('No transactions to export.', NOTIFICATION_TYPES.ERROR);
+            return;
+        }
+        // Get summary info
+        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+        const balance = totalIncome - totalExpense;
+        // Receipt-style HTML
+        let html = `<html><head><title>NeoFinance Receipt</title><style>
+            body{font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;background:#fff;color:#222;margin:0;padding:0;}
+            .receipt-container{max-width:700px;margin:30px auto;padding:24px 18px;background:#fafbfc;border-radius:12px;box-shadow:0 2px 12px #0001;}
+            h2{text-align:center;margin-bottom:8px;}
+            .summary{margin-bottom:18px;}
+            .summary p{margin:4px 0;font-size:16px;}
+            table{border-collapse:collapse;width:100%;margin-top:12px;}
+            th,td{border:1px solid #ccc;padding:8px 10px;text-align:left;}
+            th{background:#f0f0f0;}
+            .income{color:#3ecf8e;}
+            .expense{color:#ff6b6b;}
+            .footer{text-align:center;margin-top:24px;font-size:13px;color:#888;}
+        </style></head><body>`;
+        html += '<div class="receipt-container">';
+        html += '<h2>NeoFinance - Transactions Receipt</h2>';
+        html += `<div class="summary">
+            <p><strong>Exported:</strong> ${new Date().toLocaleString()}</p>
+            <p><strong>Total Balance:</strong> $${formatCurrency(balance)}</p>
+            <p class="income"><strong>Total Income:</strong> $${formatCurrency(totalIncome)}</p>
+            <p class="expense"><strong>Total Expense:</strong> $${formatCurrency(totalExpense)}</p>
+            <p><strong>Transactions:</strong> ${transactions.length}</p>
+        </div>`;
+        html += '<table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount ($)</th></tr></thead><tbody>';
+        transactions.forEach(t => {
+            html += `<tr><td>${new Date(t.date).toLocaleDateString()}</td><td class="${t.type}">${t.type.charAt(0).toUpperCase() + t.type.slice(1)}</td><td>${t.category}</td><td>${t.description}</td><td class="${t.type}">$${formatCurrency(t.amount)}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        html += '<div class="footer">&copy; 2025 NeoFinance. Exported by NeoFinance Expense Tracker.</div>';
+        html += '</div></body></html>';
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `neofinance_receipt_${new Date().toISOString().slice(0,10)}.html`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+        showNotification('Transactions exported as HTML receipt!', NOTIFICATION_TYPES.SUCCESS);
+    } catch (error) {
+        console.error('Error exporting transactions:', error);
+        showNotification('Error exporting transactions', NOTIFICATION_TYPES.ERROR);
+    }
+}
+
+// ======================
+// UTILITY FUNCTIONS
+// ======================
+function formatCurrency(amount) {
+    try {
+        return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    } catch (error) {
+        console.error('Error formatting currency:', error);
+        return amount;
+    }
+}
+
+function showNotification(message, type) {
+    try {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        notification.setAttribute('role', 'alert');
+        
+        // Style notification
+        Object.assign(notification.style, {
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '15px 25px',
+            borderRadius: '8px',
+            color: '#fff',
+            backgroundColor: type === NOTIFICATION_TYPES.SUCCESS ? 'var(--income-color)' : 
+                          type === NOTIFICATION_TYPES.ERROR ? 'var(--expense-color)' : 'var(--primary-color)',
+            boxShadow: 'var(--shadow)',
+            zIndex: '1000',
+            opacity: '0',
+            transition: 'opacity 0.3s ease, transform 0.3s ease',
+            transform: 'translateY(20px)',
+            minWidth: '200px',
+            maxWidth: '400px'
+        });
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    } catch (error) {
+        console.error('Error showing notification:', error);
+    }
+}
+
+// ======================
+// EVENT LISTENERS SETUP
+// ======================
+function setupEventListeners() {
+    try {
+        // Transaction form submission
+        const transactionForm = document.getElementById('transactionForm');
+        if (transactionForm) {
+            transactionForm.addEventListener('submit', handleTransactionSubmit);
+        }
+        
+        // Transaction type change - update category options
+        const transactionType = document.getElementById('transactionType');
+        if (transactionType) {
+            transactionType.addEventListener('change', updateCategoryOptions);
+        }
+        
+        const editTransactionType = document.getElementById('editTransactionType');
+        if (editTransactionType) {
+            editTransactionType.addEventListener('change', updateEditCategoryOptions);
+        }
+        
+        // Cancel button
+        const cancelButton = document.getElementById('cancelTransaction');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', resetTransactionForm);
+        }
+        
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggleIcon')?.parentElement;
+        if (themeToggle) {
+            themeToggle.addEventListener('click', toggleTheme);
+        }
+        
+        // Search and filters
+        const searchInput = document.getElementById('searchTransactions');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterTransactions);
+        }
+        
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', filterTransactions);
+        }
+        
+        const typeFilter = document.getElementById('typeFilter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', filterTransactions);
+        }
+        
+        // Modal close button
+        const closeModalButton = document.querySelector('.close-modal');
+        if (closeModalButton) {
+            closeModalButton.addEventListener('click', closeModal);
+        }
+        
+        // Edit transaction form
+        const editForm = document.getElementById('editTransactionForm');
+        if (editForm) {
+            editForm.addEventListener('submit', handleEditTransactionSubmit);
+        }
+        
+        // Delete transaction
+        const deleteButton = document.getElementById('deleteTransaction');
+        if (deleteButton) {
+            deleteButton.addEventListener('click', handleDeleteTransaction);
+        }
+        
+        // Export (robust, only once)
+        const exportButton = document.getElementById('exportBtn');
+        if (exportButton) {
+            exportButton.replaceWith(exportButton.cloneNode(true)); // Remove all previous listeners
+            const newExportButton = document.getElementById('exportBtn');
+            newExportButton.addEventListener('click', exportTransactions);
+            console.log('Export event listener attached');
+        }
+        
+        // Calculator
+        setupCalculator();
+        
+        // User manual toggle
+        const toggleManualButton = document.getElementById('toggleManual');
+        if (toggleManualButton) {
+            toggleManualButton.addEventListener('click', toggleManual);
+        }
+        
+        // Trend modal open/close logic
+        const openTrendModalBtn = document.getElementById('openTrendModalBtn');
+        const trendModal = document.getElementById('trendModal');
+        const closeTrendModal = document.getElementById('closeTrendModal');
+        if (openTrendModalBtn && trendModal && closeTrendModal) {
+            openTrendModalBtn.addEventListener('click', function() {
+                trendModal.hidden = false;
+                trendModal.style.display = 'flex';
+                if (!trendChart) initializeTrendChart();
+                else updateTrendChart();
+            });
+            closeTrendModal.addEventListener('click', function() {
+                trendModal.hidden = true;
+                trendModal.style.display = 'none';
+            });
+            trendModal.addEventListener('click', function(e) {
+                if (e.target === trendModal) {
+                    trendModal.hidden = true;
+                    trendModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Keyboard accessibility
+        document.addEventListener('keydown', function(event) {
+            // Close modal with Escape key
+            if (event.key === 'Escape' && document.getElementById('editModal').style.display === 'flex') {
+                closeModal();
+            }
+            
+            // Submit transaction form with Enter key when focused
+            if (event.key === 'Enter' && document.activeElement.closest('#transactionForm')) {
+                document.getElementById('transactionForm').dispatchEvent(new Event('submit'));
+            }
+            
+            // Submit edit form with Enter key when focused
+            if (event.key === 'Enter' && document.activeElement.closest('#editTransactionForm')) {
+                document.getElementById('editTransactionForm').dispatchEvent(new Event('submit'));
+            }
+        });
+        
+        // Handle window resize for chart responsiveness
+        window.addEventListener('resize', function() {
+            if (chart) {
+                chart.resize();
+            }
+        });
+        
+        // Responsive calculator modal: close on resize if too small
+        window.addEventListener('resize', function() {
+            const calcModal = document.getElementById('calculatorModal');
+            if (calcModal && window.innerWidth < 350) {
+                calcModal.style.display = 'none';
+            }
+        });
+    } catch (error) {
+        console.error('Error setting up event listeners:', error);
+    }
+}
+
+// ======================
+// MANUAL TOGGLE FUNCTION
+// ======================
+function toggleManual() {
+    try {
+        const manualContent = document.getElementById('manualContent');
+        const toggleIcon = document.getElementById('toggleManual')?.querySelector('i');
+        
+        if (!manualContent || !toggleIcon) return;
+        
+        if (manualContent.style.display === 'none' || manualContent.style.display === '') {
+            manualContent.style.display = 'block';
+            toggleIcon.classList.replace('fa-book', 'fa-book-open');
+        } else {
+            manualContent.style.display = 'none';
+            toggleIcon.classList.replace('fa-book-open', 'fa-book');
+        }
+    } catch (error) {
+        console.error('Error toggling manual:', error);
+    }
+}
+
+// ======================
+// --- Patch setupTransactionEventListeners to remove checkbox logic ---
+function setupTransactionEventListeners() {
+    const transactionsList = document.getElementById('transactionsList');
+    if (!transactionsList) return;
+    
+    // Event delegation for transaction actions
+    transactionsList.onclick = function(e) {
+        const item = e.target.closest('.transaction-item');
+        if (!item) return;
+        
+        const transactionId = item.getAttribute('data-id');
+        
+        if (e.target.closest('.edit-btn')) {
+            openEditModal(transactionId);
+        } else if (e.target.closest('.delete-btn')) {
+            handleDeleteTransactionById(transactionId);
+        }
+    };
+}
+
+// --- Patch setupEventListeners to remove deleteSelectedBtn event ---
+const origSetupEventListeners = setupEventListeners;
+setupEventListeners = function() {
+    origSetupEventListeners && origSetupEventListeners();
+};
+

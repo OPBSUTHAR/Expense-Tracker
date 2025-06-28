@@ -71,6 +71,7 @@ No installation needed — just open `index.html` in any modern browser.
 - Includes **Animate.css** classes for smooth modal and notification animations.
 - Chart rendering logic adapts colors dynamically with window resizing.
 - Provides real-time input validation with visual feedback.
+- **Note:** Only individual transaction actions (edit/delete) are available. There is no batch selection or batch delete feature.
 
 ---
 

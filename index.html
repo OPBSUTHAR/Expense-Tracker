@@ -3,43 +3,397 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NeoFinance - Modern Expense Tracker application to manage your finances">
     <title>NeoFinance | Modern Expense Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        /* Enhanced Calculator Overlay Styles */
+        .calculator-overlay {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(20,20,40,0.9));
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(15px);
+            opacity: 0;
+            transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .calculator-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .calculator-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .calculator {
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5), 
+                        0 0 40px rgba(64, 224, 255, 0.3),
+                        inset 0 1px 0 rgba(255,255,255,0.1);
+            width: 420px;
+            max-width: 95vw;
+            min-height: 680px;
+            background: linear-gradient(145deg, 
+                        #1a1a2e 0%, 
+                        #16213e 25%, 
+                        #0f3460 50%, 
+                        #533483 75%, 
+                        #e43f5a 100%);
+            padding: 25px;
+            transform: scale(0.8) rotateY(15deg);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .calculator-overlay.active .calculator {
+            transform: scale(1) rotateY(0deg);
+            opacity: 1;
+            animation: calculatorEnter 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        .calculator-close {
+            position: absolute;
+            top: 25px;
+            right: 35px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            z-index: 10001;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(238, 90, 82, 0.4);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .calculator-close:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 12px 35px rgba(238, 90, 82, 0.6);
+        }
+        .calculator-header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        .calculator-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #40e0d0, #ff8c00, #ff0080);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(64, 224, 208, 0.5);
+        }
+        .calculator-display-container {
+            background: linear-gradient(145deg, #0d1421, #1a1a2e);
+            border: 2px solid rgba(64, 224, 255, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 4px 15px rgba(0,0,0,0.5), 
+                        0 0 20px rgba(64, 224, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .calculator-display-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+        .calculator-display {
+            background: transparent;
+            border: none;
+            font-size: 2.5rem;
+            text-align: right;
+            color: #40e0d0;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            overflow-x: auto;
+            white-space: nowrap;
+            text-shadow: 0 0 15px rgba(64, 224, 208, 0.8);
+            transition: all 0.3s ease;
+            width: 100%;
+            outline: none;
+            resize: none;
+            height: auto;
+            min-height: 50px;
+        }
+        .calculator-display.error {
+            color: #ff6b6b;
+            text-shadow: 0 0 15px rgba(255, 107, 107, 0.8);
+            animation: errorPulse 0.5s ease;
+        }
+        .calculator-history {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+            text-align: right;
+            margin-bottom: 10px;
+            height: 20px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+        }
+        .calculator-history:hover {
+            color: #40e0d0;
+            text-shadow: 0 0 10px rgba(64, 224, 208, 0.5);
+        }
+        .calculator-mode-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(64, 224, 255, 0.3);
+            border-radius: 20px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #40e0d0, #ff8c00);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 5px 15px rgba(64, 224, 208, 0.4);
+        }
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+        .calculator-buttons.scientific {
+            grid-template-columns: repeat(6, 1fr);
+        }
+        .calculator-buttons button {
+            padding: 16px 8px;
+            font-size: 1.1rem;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            user-select: none;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        .calculator-buttons button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        .calculator-buttons button:hover::before {
+            left: 100%;
+        }
+        .calculator-buttons button:hover {
+            transform: translateY(-2px) scale(1.05);
+            border-color: rgba(64, 224, 255, 0.5);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3), 
+                        0 0 20px rgba(64, 224, 255, 0.3);
+        }
+        .calculator-buttons button:active {
+            transform: translateY(0) scale(0.98);
+        }
+        .calculator-buttons button:focus {
+            outline: none;
+            border-color: #40e0d0;
+            box-shadow: 0 0 0 3px rgba(64, 224, 208, 0.3);
+        }
+        .calculator-buttons .operator {
+            background: linear-gradient(145deg, #ff8c00, #ff7700);
+            border-color: rgba(255, 140, 0, 0.5);
+        }
+        .calculator-buttons .operator:hover {
+            background: linear-gradient(145deg, #ff7700, #ff6600);
+            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.4);
+        }
+        .calculator-buttons .equals {
+            background: linear-gradient(145deg, #00ff87, #00cc6a);
+            border-color: rgba(0, 255, 135, 0.5);
+            grid-column: span 2;
+        }
+        .calculator-buttons .equals:hover {
+            background: linear-gradient(145deg, #00cc6a, #00b359);
+            box-shadow: 0 8px 25px rgba(0, 255, 135, 0.4);
+        }
+        .calculator-buttons .clear {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+            border-color: rgba(255, 107, 107, 0.5);
+        }
+        .calculator-buttons .clear:hover {
+            background: linear-gradient(145deg, #ee5a52, #dc4f47);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+        .calculator-buttons .memory {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            border-color: rgba(155, 89, 182, 0.5);
+        }
+        .calculator-buttons .memory:hover {
+            background: linear-gradient(145deg, #8e44ad, #7d3c98);
+            box-shadow: 0 8px 25px rgba(155, 89, 182, 0.4);
+        }
+        .calculator-buttons .scientific {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            border-color: rgba(52, 152, 219, 0.5);
+            font-size: 0.9rem;
+        }
+        .calculator-buttons .scientific:hover {
+            background: linear-gradient(145deg, #2980b9, #21618c);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+        }
+        .calculator-buttons .apply {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            border-color: rgba(231, 76, 60, 0.5);
+            grid-column: span 2;
+        }
+        .calculator-buttons .apply:hover {
+            background: linear-gradient(145deg, #c0392b, #a93226);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+        }
+        .memory-indicator {
+            position: absolute;
+            top: 15px;
+            left: 25px;
+            color: #40e0d0;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .memory-indicator.active {
+            opacity: 1;
+            animation: memoryBlink 1.5s infinite;
+        }
+        .calculator-footer {
+            margin-top: 15px;
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+        }
+        @keyframes calculatorEnter {
+            0% { 
+                opacity: 0; 
+                transform: scale(0.8) rotateY(15deg) translateY(50px); 
+            }
+            60% { 
+                transform: scale(1.05) rotateY(-5deg) translateY(-10px); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: scale(1) rotateY(0deg) translateY(0); 
+            }
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        @keyframes errorPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes memoryBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        .scientific-hidden {
+            display: none;
+        }
+        .calculator-buttons.scientific .scientific-hidden {
+            display: block;
+        }
+        @media (max-width: 480px) {
+            .calculator {
+                width: 95vw;
+                min-height: 70vh;
+                padding: 20px;
+            }
+            .calculator-close {
+                top: 15px;
+                right: 20px;
+                font-size: 2rem;
+                width: 40px;
+                height: 40px;
+            }
+            .calculator-display {
+                font-size: 2rem;
+            }
+            .calculator-buttons {
+                gap: 8px;
+            }
+            .calculator-buttons button {
+                padding: 12px 6px;
+                font-size: 1rem;
+            }
+        }
+        /* Enhanced Transaction Form Styles */
+        .transaction-form-container input:invalid,
+        .transaction-form-container select:invalid {
+            border-color: #dc3545;
+        }
+        .transaction-form-container input:valid,
+        .transaction-form-container select:valid {
+            border-color: #28a745;
+        }
+    </style>
 </head>
 <body>
     <!-- Main Container -->
-     <main>
-    <div class="container">
+    <main class="container">
         <!-- Left Panel -->
         <div class="panel left-panel">
             <div class="profile-section">
-                <div class="avatar">
-                    <i class="fas fa-user"></i>
+                <div class="avatar" aria-hidden="true">
+                    <i class="fas fa-user" aria-hidden="true"></i>
                 </div>
                 <h3 class="welcome-text">Welcome back</h3>
-                <div class="date-display" id="currentDate"></div>
+                <div class="date-display" id="currentDate" aria-live="polite"></div>
             </div>
 
             <div class="balance-card">
                 <div class="balance-header">
                     <h2>Total Balance</h2>
                     <div class="balance-actions">
-                        <button id="exportBtn" class="action-btn" title="Export Data">
-                            <i class="fas fa-download"></i>
+                        <button id="exportBtn" class="action-btn" title="Export Data" aria-label="Export transaction data">
+                            <i class="fas fa-download" aria-hidden="true"></i>
                         </button>
-                        <button id="importBtn" class="action-btn" title="Import Data">
-                            <i class="fas fa-upload"></i>
-                        </button>
-                        <input type="file" id="importFile" accept=".json" style="display: none;">
                     </div>
                 </div>
-                <div class="balance-amount" id="balanceAmount">$0.00</div>
+                <div class="balance-amount" id="balanceAmount" aria-live="polite">$0.00</div>
                 <div class="balance-summary">
                     <div class="summary-item income">
                         <div class="summary-icon">
-                            <i class="fas fa-arrow-up"></i>
+                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
                         </div>
                         <div class="summary-details">
                             <p class="summary-label">Income</p>
@@ -48,7 +402,7 @@
                     </div>
                     <div class="summary-item expense">
                         <div class="summary-icon">
-                            <i class="fas fa-arrow-down"></i>
+                            <i class="fas fa-arrow-down" aria-hidden="true"></i>
                         </div>
                         <div class="summary-details">
                             <p class="summary-label">Expense</p>
@@ -58,37 +412,19 @@
                 </div>
             </div>
 
-            <div class="chart-container">
-                <h3>Expense Distribution</h3>
-                <div class="chart-placeholder" id="expenseChart">
-                    <div class="empty-chart-message">Add expenses to see distribution</div>
-                </div>
-            </div>
+            <button id="openTrendModalBtn" class="btn btn-add" style="margin:12px auto 0 auto;display:block;">View Income & Expense Trend</button>
 
-            <div class="calculator-section">
-                <h3>Quick Calculator</h3>
-                <div class="calculator">
-                    <div class="calculator-display" id="calculatorDisplay">0</div>
-                    <div class="calculator-buttons">
-                        <button class="calc-btn clear" id="clearCalc">C</button>
-                        <button class="calc-btn operator">←</button>
-                        <button class="calc-btn operator">%</button>
-                        <button class="calc-btn operator">÷</button>
-                        <button class="calc-btn number">7</button>
-                        <button class="calc-btn number">8</button>
-                        <button class="calc-btn number">9</button>
-                        <button class="calc-btn operator">×</button>
-                        <button class="calc-btn number">4</button>
-                        <button class="calc-btn number">5</button>
-                        <button class="calc-btn number">6</button>
-                        <button class="calc-btn operator">-</button>
-                        <button class="calc-btn number">1</button>
-                        <button class="calc-btn number">2</button>
-                        <button class="calc-btn number">3</button>
-                        <button class="calc-btn operator">+</button>
-                        <button class="calc-btn number zero">0</button>
-                        <button class="calc-btn number">.</button>
-                        <button class="calc-btn equals">=</button>
+            <div class="modal" id="trendModal" role="dialog" aria-modal="true" aria-labelledby="trendModalTitle" hidden>
+                <div class="modal-content" style="max-width:700px;">
+                    <div class="modal-header">
+                        <h3 id="trendModalTitle">Income & Expense Trend</h3>
+                        <button class="close-modal" id="closeTrendModal" aria-label="Close trend chart">×</button>
+                    </div>
+                    <div class="chart-modal-body">
+                        <div class="chart-placeholder">
+                            <canvas id="trendChart" style="width:100%;height:260px;"></canvas>
+                            <div class="empty-chart-message" id="trendEmptyMsg">Add transactions to see trend</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -96,115 +432,22 @@
             <div class="manual-section">
                 <div class="manual-header">
                     <h3>User Manual</h3>
-                    <button id="toggleManual" class="action-btn" title="Toggle User Manual">
-                        <i class="fas fa-book"></i>
+                    <button id="toggleManual" class="action-btn" title="Toggle User Manual" aria-expanded="false" aria-controls="manualContent">
+                        <i class="fas fa-book" aria-hidden="true"></i>
                     </button>
                 </div>
                 <div class="manual-content" id="manualContent" style="display: none;">
-                    <h4>NeoFinance Expense Tracker Guide</h4>
-                    <p>Welcome to the NeoFinance Expense Tracker. This guide explains how to manage your finances using the application's features.</p>
-                    
-                    <details>
-                        <summary>Adding a Transaction</summary>
-                        <p>
-                            In the "Add New Transaction" form on the right panel:
-                            <ul>
-                                <li><strong>Date</strong>: Select a date (defaults to today).</li>
-                                <li><strong>Type</strong>: Choose "Income" or "Expense".</li>
-                                <li><strong>Amount</strong>: Enter a positive number (use the calculator below).</li>
-                                <li><strong>Category</strong>: Select a category (e.g., "Salary" for income, "Food" for expense).</li>
-                                <li><strong>Description</strong>: Add a brief description.</li>
-                                <li>Click <strong>Add Transaction</strong> or press <strong>Enter</strong>.</li>
-                            </ul>
-                            <strong>Response</strong>: The transaction appears at the top of the Transaction History with a green highlight for 2 seconds. A success notification shows. The balance, income, expense, and chart update instantly. Invalid inputs trigger an error notification and highlight fields in red.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Editing a Transaction</summary>
-                        <p>
-                            Click any transaction in the Transaction History (hover for a "Click to edit or delete" tooltip). In the modal:
-                            <ul>
-                                <li>Modify date, type, amount, category, or description.</li>
-                                <li>Click <strong>Save Changes</strong> or press <strong>Enter</strong>.</li>
-                            </ul>
-                            <strong>Response</strong>: The modal closes, and the updated transaction is highlighted. A success notification appears, and the balance and chart update.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Deleting a Transaction</summary>
-                        <p>
-                            Click a transaction to open the modal, then click <strong>Delete</strong>.
-                            <strong>Response</strong>: The transaction fades out (300ms animation), the modal closes, and a success notification shows. The list, balance, and chart update instantly without a confirmation prompt.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Using the Calculator</summary>
-                        <p>
-                            In the Quick Calculator section:
-                            <ul>
-                                <li>Click numbers and operators (+, −, ×, ÷, %) to calculate.</li>
-                                <li>Use <strong>C</strong> to clear, <strong>←</strong> for backspace.</li>
-                                <li>Click <strong>=</strong> to compute and auto-fill the transaction amount.</li>
-                            </ul>
-                            <strong>Response</strong>: The display updates with each input. After clicking =, the amount field in the transaction form updates if the result is positive.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Filtering and Searching</summary>
-                        <p>
-                            In the Transaction History:
-                            <ul>
-                                <li>Use the search bar to filter by description or category.</li>
-                                <li>Select a category or type from the dropdowns (e.g., "Food", "Income").</li>
-                            </ul>
-                            <strong>Response</strong>: The transaction list updates instantly to show matching transactions or an empty state message if none match.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Exporting and Importing</summary>
-                        <p>
-                            <ul>
-                                <li><strong>Export</strong>: Click the download icon in the Total Balance section to save a JSON file.</li>
-                                <li><strong>Import</strong>: Click the upload icon and select a JSON file.</li>
-                            </ul>
-                            <strong>Response</strong>: Export shows a success notification and downloads a file. Import adds new transactions, updates the UI, and shows a success notification. Invalid files trigger an error.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Viewing Summaries and Charts</summary>
-                        <p>
-                            The Total Balance section shows income, expense, and balance. The Expense Distribution chart displays expense categories.
-                            <strong>Response</strong>: Summaries update with a pulse animation on changes. The chart appears only with expenses, showing amounts and percentages on hover.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Switching Themes</summary>
-                        <p>
-                            Click the moon/sun icon in the top-right corner.
-                            <strong>Response</strong>: The interface toggles between light and dark themes, with the chart and colors updating instantly.
-                        </p>
-                    </details>
-
-                    <details>
-                        <summary>Keyboard Accessibility</summary>
-                        <p>
-                            <ul>
-                                <li>Press <strong>Escape</strong> to close the edit modal.</li>
-                                <li>Press <strong>Enter</strong> to submit forms.</li>
-                                <li>Use <strong>Tab</strong> to navigate fields and buttons.</li>
-                            </ul>
-                            <strong>Response</strong>: The modal closes, forms submit, and focus moves as expected.
-                        </p>
-                    </details>
-
-                    <p><strong>Troubleshooting</strong>: Ensure valid inputs for transactions. Export data to avoid loss (stored in localStorage). If the chart doesn't show, add expenses. For issues, clear browser data and re-import transactions.</p>
+                    <h4>NeoFinance Quick User Guide</h4>
+                    <ul>
+                        <li><strong>Add Transactions:</strong> Enter date, type, amount, category, and description. Use the calculator for quick calculations. Click <b>Add Transaction</b>.</li>
+                        <li><strong>Edit/Delete:</strong> Click a transaction to edit or delete it.</li>
+                        <li><strong>View Trends:</strong> Click <b>View Income & Expense Trend</b> for a monthly bar graph.</li>
+                        <li><strong>Export Data:</strong> Use the download icon to export transactions as PDF.</li>
+                        <li><strong>Theme:</strong> Toggle light/dark mode with the moon/sun icon.</li>
+                        <li><strong>Calculator:</strong> Open the futuristic calculator with basic/scientific modes. Features include memory functions (M+, M-, MR, MC), operations (+, -, *, /, %, √, ±), scientific functions (sin, cos, tan, log, ln, x², xʸ, π, e), and tax calculation. Use Esc to clear, Backspace to delete, Enter to calculate, and arrow keys to navigate. Apply results to the transaction form.</li>
+                        <li><strong>Accessibility:</strong> Use <b>Tab</b> to navigate, <b>Enter</b> to submit, <b>Escape</b> to clear/close, and arrow keys for calculator buttons.</li>
+                    </ul>
+                    <p style="margin-top:10px;"><b>Tip:</b> Data is stored in your browser. Export regularly to avoid loss.</p>
                 </div>
             </div>
         </div>
@@ -213,8 +456,13 @@
         <div class="panel right-panel">
             <div class="heading">
                 <h1>NeoFinance <span class="subtitle">Expense Tracker</span></h1>
-                <div class="theme-toggle">
-                    <i class="fas fa-moon" id="themeToggleIcon"></i>
+                <div class="flex-row">
+                    <button id="openCalculatorBtn" class="action-btn" title="Open Futuristic Calculator" aria-label="Open calculator">
+                        <i class="fas fa-calculator" aria-hidden="true"></i>
+                    </button>
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                        <i class="fas fa-moon" id="themeToggleIcon" aria-hidden="true"></i>
+                    </button>
                 </div>
             </div>
 
@@ -224,11 +472,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="transactionDate">Date</label>
-                            <input type="date" id="transactionDate" required>
+                            <input type="date" id="transactionDate" required aria-required="true">
                         </div>
                         <div class="form-group">
                             <label for="transactionType">Type</label>
-                            <select id="transactionType" required>
+                            <select id="transactionType" required aria-required="true">
                                 <option value="income">Income</option>
                                 <option value="expense">Expense</option>
                             </select>
@@ -237,19 +485,16 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="transactionAmount">Amount ($)</label>
-                            <input type="number" id="transactionAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                            <input type="number" id="transactionAmount" min="0.01" step="0.01" placeholder="0.00" required aria-required="true">
                         </div>
                         <div class="form-group">
                             <label for="transactionCategory">Category</label>
-                            <select id="transactionCategory" required>
-                                <!-- Income categories -->
+                            <select id="transactionCategory" required aria-required="true">
                                 <option value="Salary" data-type="income">Salary</option>
                                 <option value="Freelance" data-type="income">Freelance</option>
                                 <option value="Investment" data-type="income">Investment</option>
                                 <option value="Gift" data-type="income">Gift</option>
                                 <option value="Other Income" data-type="income">Other Income</option>
-                                
-                                <!-- Expense categories -->
                                 <option value="Food" data-type="expense">Food</option>
                                 <option value="Transportation" data-type="expense">Transportation</option>
                                 <option value="Housing" data-type="expense">Housing</option>
@@ -259,18 +504,19 @@
                                 <option value="Health" data-type="expense">Health</option>
                                 <option value="Education" data-type="expense">Education</option>
                                 <option value="Travel" data-type="expense">Travel</option>
+                                <option value="Tax" data-type="expense">Tax</option>
                                 <option value="Other Expense" data-type="expense">Other Expense</option>
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="transactionDescription">Description</label>
-                        <input type="text" id="transactionDescription" placeholder="Enter transaction description" required>
+                        <input type="text" id="transactionDescription" placeholder="Enter transaction description" required aria-required="true">
                     </div>
                     <div class="form-actions">
                         <button type="button" id="cancelTransaction" class="btn btn-cancel">Cancel</button>
                         <button type="submit" class="btn btn-add">Add Transaction</button>
-                        <p class="reload-message"><h6 class="reload-message">please RELOAD Each Transactions Are Added</h6></p>
+                        <p class="reload-message">Please RELOAD after adding transactions</p>
                     </div>
                 </form>
             </div>
@@ -280,19 +526,18 @@
                     <h2>Transaction History</h2>
                     <div class="filter-controls">
                         <div class="search-container">
-                            <input type="text" id="searchTransactions" placeholder="Search transactions...">
-                            <i class="fas fa-search"></i>
+                            <label for="searchTransactions" class="sr-only">Search transactions</label>
+                            <input type="text" id="searchTransactions" placeholder="Search transactions..." aria-label="Search transactions">
+                            <i class="fas fa-search" aria-hidden="true"></i>
                         </div>
-                        <select id="categoryFilter">
+                        <label for="categoryFilter" class="sr-only">Filter by category</label>
+                        <select id="categoryFilter" title="Filter by category" aria-label="Filter by category">
                             <option value="all">All Categories</option>
-                            <!-- Income categories -->
                             <option value="Salary">Salary</option>
                             <option value="Freelance">Freelance</option>
                             <option value="Investment">Investment</option>
                             <option value="Gift">Gift</option>
                             <option value="Other Income">Other Income</option>
-                            
-                            <!-- Expense categories -->
                             <option value="Food">Food</option>
                             <option value="Transportation">Transportation</option>
                             <option value="Housing">Housing</option>
@@ -302,9 +547,11 @@
                             <option value="Health">Health</option>
                             <option value="Education">Education</option>
                             <option value="Travel">Travel</option>
+                            <option value="Tax">Tax</option>
                             <option value="Other Expense">Other Expense</option>
                         </select>
-                        <select id="typeFilter">
+                        <label for="typeFilter" class="sr-only">Filter by type</label>
+                        <select id="typeFilter" title="Filter by type" aria-label="Filter by transaction type">
                             <option value="all">All Types</option>
                             <option value="income">Income</option>
                             <option value="expense">Expense</option>
@@ -312,91 +559,505 @@
                     </div>
                 </div>
                 
-                <div class="transactions-list" id="transactionsList">
-                    <!-- Transactions will be added here by JavaScript -->
+                <div class="transactions-list" id="transactionsList" aria-live="polite">
                     <div class="empty-state">
-                        <i class="fas fa-receipt empty-icon"></i>
+                        <i class="fas fa-receipt empty-icon" aria-hidden="true"></i>
                         <p>No transactions yet. Add a transaction to get started.</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Modal for editing transactions -->
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Edit Transaction</h2>
-                <span class="close-modal">×</span>
+        <!-- Modal for editing transactions -->
+        <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" hidden>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="editModalTitle">Edit Transaction</h2>
+                    <button class="close-modal" aria-label="Close modal">×</button>
+                </div>
+                <form id="editTransactionForm">
+                    <input type="hidden" id="editTransactionId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editTransactionDate">Date</label>
+                            <input type="date" id="editTransactionDate" required aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label for="editTransactionType">Type</label>
+                            <select id="editTransactionType" required aria-required="true">
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editTransactionAmount">Amount ($)</label>
+                            <input type="number" id="editTransactionAmount" min="0.01" step="0.01" placeholder="0.00" required aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label for="editTransactionCategory">Category</label>
+                            <select id="editTransactionCategory" required aria-required="true">
+                                <option value="Salary" data-type="income">Salary</option>
+                                <option value="Freelance" data-type="income">Freelance</option>
+                                <option value="Investment" data-type="income">Investment</option>
+                                <option value="Gift" data-type="income">Gift</option>
+                                <option value="Other Income" data-type="income">Other Income</option>
+                                <option value="Food" data-type="expense">Food</option>
+                                <option value="Transportation" data-type="expense">Transportation</option>
+                                <option value="Housing" data-type="expense">Housing</option>
+                                <option value="Entertainment" data-type="expense">Entertainment</option>
+                                <option value="Shopping" data-type="expense">Shopping</option>
+                                <option value="Utilities" data-type="expense">Utilities</option>
+                                <option value="Health" data-type="expense">Health</option>
+                                <option value="Education" data-type="expense">Education</option>
+                                <option value="Travel" data-type="expense">Travel</option>
+                                <option value="Tax" data-type="expense">Tax</option>
+                                <option value="Other Expense" data-type="expense">Other Expense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransactionDescription">Description</label>
+                        <input type="text" id="editTransactionDescription" placeholder="Enter transaction description" required aria-required="true">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-add">Save Changes</button>
+                    </div>
+                </form>
             </div>
-            <form id="editTransactionForm">
-                <input type="hidden" id="editTransactionId">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="editTransactionDate">Date</label>
-                        <input type="date" id="editTransactionDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editTransactionType">Type</label>
-                        <select id="editTransactionType" required>
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="editTransactionAmount">Amount ($)</label>
-                        <input type="number" id="editTransactionAmount" min="0.01" step="0.01" placeholder="0.00" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editTransactionCategory">Category</label>
-                        <select id="editTransactionCategory" required>
-                            <!-- Income categories -->
-                            <option value="Salary" data-type="income">Salary</option>
-                            <option value="Freelance" data-type="income">Freelance</option>
-                            <option value="Investment" data-type="income">Investment</option>
-                            <option value="Gift" data-type="income">Gift</option>
-                            <option value="Other Income" data-type="income">Other Income</option>
-                            
-                            <!-- Expense categories -->
-                            <option value="Food" data-type="expense">Food</option>
-                            <option value="Transportation" data-type="expense">Transportation</option>
-                            <option value="Housing" data-type="expense">Housing</option>
-                            <option value="Entertainment" data-type="expense">Entertainment</option>
-                            <option value="Shopping" data-type="expense">Shopping</option>
-                            <option value="Utilities" data-type="expense">Utilities</option>
-                            <option value="Health" data-type="expense">Health</option>
-                            <option value="Education" data-type="expense">Education</option>
-                            <option value="Travel" data-type="expense">Travel</option>
-                            <option value="Other Expense" data-type="expense">Other Expense</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="editTransactionDescription">Description</label>
-                    <input type="text" id="editTransactionDescription" placeholder="Enter transaction description" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-cancel" id="deleteTransaction">Delete</button>
-                    <button type="submit" class="btn btn-add">Save Changes</button>
-                </div>
-            </form>
         </div>
-    </div>
     </main>
 
-    <section class="footer-section">
+    <!-- Calculator Overlay -->
+    <div id="calculatorOverlay" class="calculator-overlay">
+        <div class="calculator-container">
+            <div id="calculator" class="calculator" role="application" aria-label="Futuristic Calculator">
+                <div class="calculator-header">
+                    <h2 class="calculator-title">NeoCalculator</h2>
+                </div>
+                <div class="calculator-display-container">
+                    <div id="memoryIndicator" class="memory-indicator" aria-hidden="true">M</div>
+                    <div id="memoryIndicator" class="memory-indicator" aria-hidden="true">M</div>
+                    <div id="calculatorHistory" class="calculator-history" aria-label="Calculation history"></div>
+                    <div id="calculatorDisplay" class="calculator-display" role="textbox" aria-live="polite">0</div>
+                </div>
+                <div class="calculator-mode-toggle">
+                    <button id="basicModeBtn" class="mode-btn active" aria-label="Switch to basic mode">Basic</button>
+                    <button id="scientificModeBtn" class="mode-btn" aria-label="Switch to scientific mode">Scientific</button>
+                </div>
+                <div id="calculatorButtons" class="calculator-buttons" role="grid">
+                    <button class="clear" aria-label="Clear all">C</button>
+                    <button class="memory" aria-label="Memory Clear">MC</button>
+                    <button class="memory" aria-label="Memory Recall">MR</button>
+                    <button class="memory" aria-label="Memory Add">M+</button>
+                    <button class="memory" aria-label="Memory Subtract">M-</button>
+                    <button class="scientific scientific-hidden" aria-label="Sine">sin</button>
+                    <button class="scientific scientific-hidden" aria-label="Cosine">cos</button>
+                    <button class="scientific scientific-hidden" aria-label="Tangent">tan</button>
+                    <button class="scientific scientific-hidden" aria-label="Logarithm">log</button>
+                    <button class="scientific scientific-hidden" aria-label="Natural Logarithm">ln</button>
+                    <button class="operator" aria-label="Divide">/</button>
+                    <button class="operator" aria-label="Multiply">*</button>
+                    <button class="operator" aria-label="Subtract">-</button>
+                    <button class="scientific scientific-hidden" aria-label="Square">x²</button>
+                    <button class="scientific scientific-hidden" aria-label="Power">xʸ</button>
+                    <button>7</button>
+                    <button>8</button>
+                    <button>9</button>
+                    <button class="operator" aria-label="Add">+</button>
+                    <button class="scientific scientific-hidden" aria-label="Pi">π</button>
+                    <button>4</button>
+                    <button>5</button>
+                    <button>6</button>
+                    <button class="operator" aria-label="Percentage">%</button>
+                    <button class="scientific scientific-hidden" aria-label="Euler's Number">e</button>
+                    <button>1</button>
+                    <button>2</button>
+                    <button>3</button>
+                    <button class="operator" aria-label="Square Root">√</button>
+                    <button class="scientific scientific-hidden" aria-label="Tax Calculation">Tax</button>
+                    <button>0</button>
+                    <button aria-label="Decimal Point">.</button>
+                    <button class="operator" aria-label="Negate">±</button>
+                    <button class="equals" aria-label="Equals">=</button>
+                    <button class="apply" aria-label="Apply to Transaction">Apply</button>
+                </div>
+                <div class="calculator-footer">
+                    <p>NeoCalc v1.0 | Powered by Expense Tracker and developed by Omprakash Suthar</p>
+                </div>
+            </div>
+            <button id="closeCalculatorBtn" class="calculator-close" aria-label="Close calculator">×</button>
+        </div>
+    </div>
+
     <footer class="footer">
         <div class="footer-content">
-            <p>&copy; 2025 NeoFinance. All rights reserved.</p>
-            <p>Created by <a href="https://github.com/OPBSUTHAR" target="_blank">Omprakash Suthar with &hearts;</a></p>
+            <p>© 2025 NeoFinance. All rights reserved.</p>
+            <p>Created by <a href="https://github.com/OPBSUTHAR" target="_blank" rel="noopener noreferrer">Omprakash Suthar with <span aria-hidden="true">♥</span><span class="sr-only">love</span></a></p>
         </div>
     </footer>
-    </section>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.0/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="script.js"></script>
+
+    <script>
+    // Enhanced Calculator Logic
+    (function() {
+        const overlay = document.getElementById('calculatorOverlay');
+        const openBtn = document.getElementById('openCalculatorBtn');
+        const closeBtn = document.getElementById('closeCalculatorBtn');
+        const display = document.getElementById('calculatorDisplay');
+        const history = document.getElementById('calculatorHistory');
+        const buttons = document.getElementById('calculatorButtons');
+        const basicModeBtn = document.getElementById('basicModeBtn');
+        const scientificModeBtn = document.getElementById('scientificModeBtn');
+        const memoryIndicator = document.getElementById('memoryIndicator');
+        const transactionAmount = document.getElementById('transactionAmount');
+        const transactionType = document.getElementById('transactionType');
+        const transactionCategory = document.getElementById('transactionCategory');
+        
+        let firstOperand = null;
+        let operator = null;
+        let waitingForSecondOperand = false;
+        let displayValue = '0';
+        let memory = 0;
+        let lastCalculation = '';
+        let isScientificMode = false;
+        const taxRate = 0.1; // Default 10% tax rate
+
+        // Enhanced keyboard shortcuts mapping
+        const keyMappings = {
+            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', 
+            '6': '6', '7': '7', '8': '8', '9': '9', 
+            '.': '.', 
+            '+': '+', '-': '-', '*': '*', '/': '/', 
+            '%': '%', '^': 'xʸ', 's': 'sin', 'c': 'cos', 't': 'tan', 
+            'l': 'log', 'n': 'ln', 'r': '√', 'p': 'π', 'e': 'e',
+            '=': '=', 'Enter': '=',
+            'Escape': 'C', 'Backspace': 'backspace',
+            'm': 'memory', 'a': 'Apply'
+        };
+
+        // Enhanced memory functions mapping
+        const memoryMappings = {
+            'c': 'MC', 'r': 'MR', '+': 'M+', '-': 'M-'
+        };
+
+        // Update display with better formatting
+        function updateDisplay() {
+            // Format large numbers with commas and handle errors
+            if (displayValue !== 'Error' && !isNaN(displayValue)) {
+                const num = parseFloat(displayValue);
+                if (!isNaN(num)) {
+                    displayValue = num.toLocaleString('en-US', {
+                        maximumFractionDigits: 8,
+                        minimumFractionDigits: displayValue.includes('.') ? 1 : 0
+                    });
+                }
+            }
+            
+            display.textContent = displayValue;
+            display.classList.toggle('error', displayValue === 'Error');
+            
+            // Dynamic font sizing
+            const length = displayValue.replace(/,/g, '').length;
+            if (length > 16) display.style.fontSize = '1.4rem';
+            else if (length > 12) display.style.fontSize = '1.8rem';
+            else if (length > 8) display.style.fontSize = '2.2rem';
+            else display.style.fontSize = '2.5rem';
+            
+            // Memory indicator
+            memoryIndicator.classList.toggle('active', memory !== 0);
+        }
+
+        // Enhanced calculation logic
+        function performCalculation(first, op, second) {
+            try {
+                const firstNum = typeof first === 'string' ? parseFloat(first.replace(/,/g, '')) : first;
+                const secondNum = typeof second === 'string' ? parseFloat(second.replace(/,/g, '')) : second;
+                
+                switch (op) {
+                    case '+': return firstNum + secondNum;
+                    case '-': return firstNum - secondNum;
+                    case '*': return firstNum * secondNum;
+                    case '/': 
+                        if (secondNum === 0) throw new Error('Division by zero');
+                        return firstNum / secondNum;
+                    case '%': return (firstNum * secondNum) / 100; // Fixed percentage calculation
+                    case '√': 
+                        if (firstNum < 0) throw new Error('Invalid square root');
+                        return Math.sqrt(firstNum);
+                    case 'sin': return Math.sin(firstNum * Math.PI / 180);
+                    case 'cos': return Math.cos(firstNum * Math.PI / 180);
+                    case 'tan': 
+                        if (Math.abs(firstNum % 180) === 90) throw new Error('Invalid angle');
+                        return Math.tan(firstNum * Math.PI / 180);
+                    case 'log': 
+                        if (firstNum <= 0) throw new Error('Invalid logarithm');
+                        return Math.log10(firstNum);
+                    case 'ln': 
+                        if (firstNum <= 0) throw new Error('Invalid logarithm');
+                        return Math.log(firstNum);
+                    case 'x²': return firstNum * firstNum;
+                    case 'xʸ': return Math.pow(firstNum, secondNum);
+                    case 'tax': return firstNum * (1 + taxRate); // Fixed tax calculation
+                    case 'π': return Math.PI;
+                    case 'e': return Math.E;
+                    default: return secondNum;
+                }
+            } catch (error) {
+                return 'Error';
+            }
+        }
+
+        // Update history with better formatting
+        function updateHistory() {
+            history.textContent = lastCalculation;
+            history.title = lastCalculation; // Add tooltip for long calculations
+        }
+
+        // Enhanced button click handler
+        function handleButtonClick(value) {
+            // Reset error state on new input
+            if (displayValue === 'Error' && value !== 'C') {
+                displayValue = '0';
+            }
+
+            // Handle numeric input
+            if (/\d/.test(value)) {
+                if (waitingForSecondOperand) {
+                    displayValue = value;
+                    waitingForSecondOperand = false;
+                } else {
+                    displayValue = displayValue === '0' ? value : displayValue.replace(/,/g, '') + value;
+                }
+            } 
+            // Handle decimal point
+            else if (value === '.') {
+                if (!displayValue.includes('.')) {
+                    displayValue = displayValue.includes('.') ? displayValue : displayValue + '.';
+                }
+            }
+            // Handle basic operations
+            else if (['+', '-', '*', '/', '%', 'xʸ'].includes(value)) {
+                if (operator && !waitingForSecondOperand) {
+                    const result = performCalculation(firstOperand, operator, displayValue);
+                    lastCalculation = `${firstOperand} ${operator} ${displayValue} = ${result}`;
+                    displayValue = result === 'Error' ? 'Error' : result.toString();
+                    firstOperand = result === 'Error' ? null : result;
+                    operator = value;
+                    waitingForSecondOperand = true;
+                } else {
+                    firstOperand = displayValue;
+                    operator = value;
+                    waitingForSecondOperand = true;
+                }
+            }
+            // Handle scientific functions
+            else if (['sin', 'cos', 'tan', 'log', 'ln', 'x²', '√', 'π', 'e', 'Tax'].includes(value)) {
+                if (!waitingForSecondOperand) {
+                    const result = performCalculation(displayValue, value === 'Tax' ? 'tax' : value, 0);
+                    lastCalculation = `${value}(${displayValue}) = ${result}`;
+                    displayValue = result === 'Error' ? 'Error' : result.toString();
+                    firstOperand = null;
+                    operator = null;
+                    waitingForSecondOperand = false;
+                }
+            }
+            // Handle equals
+            else if (value === '=') {
+                if (operator && !waitingForSecondOperand) {
+                    const result = performCalculation(firstOperand, operator, displayValue);
+                    lastCalculation = `${firstOperand} ${operator} ${displayValue} = ${result}`;
+                    displayValue = result === 'Error' ? 'Error' : result.toString();
+                    firstOperand = null;
+                    operator = null;
+                    waitingForSecondOperand = false;
+                }
+            }
+            // Handle clear
+            else if (value === 'C') {
+                displayValue = '0';
+                firstOperand = null;
+                operator = null;
+                waitingForSecondOperand = false;
+                lastCalculation = '';
+            }
+            // Handle sign change
+            else if (value === '±') {
+                displayValue = (parseFloat(displayValue.replace(/,/g, '')) * -1).toString();
+            }
+            // Handle backspace
+            else if (value === 'backspace') {
+                if (displayValue !== 'Error' && !waitingForSecondOperand) {
+                    const newValue = displayValue.replace(/,/g, '').slice(0, -1);
+                    displayValue = newValue.length > 0 ? newValue : '0';
+                }
+            }
+            // Handle memory functions
+            else if (memoryMappings[value]) {
+                const memOp = memoryMappings[value];
+                if (memOp === 'MC') memory = 0;
+                else if (memOp === 'MR') displayValue = memory.toString();
+                else if (memOp === 'M+') memory += parseFloat(displayValue.replace(/,/g, ''));
+                else if (memOp === 'M-') memory -= parseFloat(displayValue.replace(/,/g, ''));
+            }
+            // Handle apply to transaction
+            else if (value === 'Apply') {
+                if (displayValue !== 'Error') {
+                    const result = parseFloat(displayValue.replace(/,/g, ''));
+                    if (confirm(`Apply $${result.toFixed(2)} to transaction amount?`)) {
+                        transactionAmount.value = Math.abs(result).toFixed(2);
+                        transactionType.value = result >= 0 ? 'income' : 'expense';
+                        if (lastCalculation.includes('Tax')) {
+                            transactionCategory.value = 'Tax';
+                        }
+                        closeCalculator();
+                        transactionAmount.focus();
+                    }
+                }
+            }
+            // Handle constants
+            else if (value === 'π' || value === 'e') {
+                const constant = value === 'π' ? Math.PI : Math.E;
+                if (waitingForSecondOperand) {
+                    displayValue = constant.toString();
+                    waitingForSecondOperand = false;
+                } else {
+                    displayValue = constant.toString();
+                }
+            }
+
+            updateDisplay();
+            updateHistory();
+        }
+
+        // Enhanced keyboard handler
+        function handleKeyDown(e) {
+            if (!overlay.classList.contains('active')) return;
+            
+            const key = e.key;
+            let handled = false;
+            
+            // Memory function with modifier keys
+            if (e.ctrlKey && key.toLowerCase() === 'm') {
+                const memKey = e.shiftKey ? e.key.toUpperCase() : e.key.toLowerCase();
+                if (memoryMappings[memKey]) {
+                    handleButtonClick(memKey);
+                    handled = true;
+                }
+            }
+            
+            // Main key mappings
+            if (!handled && keyMappings[key]) {
+                handleButtonClick(keyMappings[key]);
+                handled = true;
+            }
+            
+            // Arrow key navigation
+            if (!handled && ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(key)) {
+                const buttonsList = Array.from(buttons.querySelectorAll('button:not(.scientific-hidden)'));
+                const current = document.activeElement;
+                const currentIndex = buttonsList.indexOf(current);
+                let nextIndex;
+                const columns = isScientificMode ? 6 : 5;
+                
+                if (key === 'ArrowRight') nextIndex = currentIndex + 1;
+                else if (key === 'ArrowLeft') nextIndex = currentIndex - 1;
+                else if (key === 'ArrowUp') nextIndex = currentIndex - columns;
+                else if (key === 'ArrowDown') nextIndex = currentIndex + columns;
+                
+                if (nextIndex >= 0 && nextIndex < buttonsList.length) {
+                    buttonsList[nextIndex].focus();
+                    handled = true;
+                }
+            }
+            
+            if (handled) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+
+        // Toggle calculator mode with better accessibility
+        function toggleMode(isScientific) {
+            isScientificMode = isScientific;
+            buttons.classList.toggle('scientific', isScientific);
+            basicModeBtn.classList.toggle('active', !isScientific);
+            scientificModeBtn.classList.toggle('active', isScientific);
+            
+            // Focus the first visible button after mode change
+            const firstVisibleButton = buttons.querySelector('button:not(.scientific-hidden)');
+            if (firstVisibleButton) firstVisibleButton.focus();
+        }
+
+        // Open calculator with better focus management
+        function openCalculator() {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Set focus to display for screen readers
+            display.setAttribute('tabindex', '0');
+            display.focus();
+        }
+
+        // Close calculator with proper cleanup
+        function closeCalculator() {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleKeyDown);
+            openBtn.focus();
+            
+            // Reset calculator state
+            displayValue = '0';
+            firstOperand = null;
+            operator = null;
+            waitingForSecondOperand = false;
+            lastCalculation = '';
+            updateDisplay();
+            updateHistory();
+        }
+
+        // Initialize calculator with proper tabindex and ARIA attributes
+        function initCalculator() {
+            // Set tabindex and ARIA attributes for all buttons
+            const calculatorButtons = buttons.querySelectorAll('button');
+            calculatorButtons.forEach(button => {
+                button.setAttribute('tabindex', '0');
+                if (!button.getAttribute('aria-label')) {
+                    button.setAttribute('aria-label', button.textContent);
+                }
+            });
+            
+            // Add event listeners
+            buttons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    handleButtonClick(e.target.textContent);
+                    e.target.focus();
+                }
+            });
+            
+            // Add keyboard event listener
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Initialize display
+            updateDisplay();
+            updateHistory();
+        }
+
+        // Event listeners
+        if (openBtn) openBtn.addEventListener('click', openCalculator);
+        if (closeBtn) closeBtn.addEventListener('click', closeCalculator);
+        if (basicModeBtn) basicModeBtn.addEventListener('click', () => toggleMode(false));
+        if (scientificModeBtn) scientificModeBtn.addEventListener('click', () => toggleMode(true));
+        
+        // Initialize calculator
+        initCalculator();
+    })();
+</script>
 </body>
 </html>
