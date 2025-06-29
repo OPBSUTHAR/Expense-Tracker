@@ -17,13 +17,25 @@ document.addEventListener('DOMContentLoaded', function() {
             calcModal.hidden = false;
             calcModal.style.display = 'flex';
         });
-         closeCalcModal.addEventListener('click', function() {             calcModal.hidden = true;
+        closeCalcModal.addEventListener('click', function() {
+            calcModal.hidden = true;
             calcModal.style.display = 'none';
         });
         calcModal.addEventListener('click', function(e) {
+            // Only close if clicking the overlay, not the modal content
             if (e.target === calcModal) {
                 calcModal.hidden = true;
                 calcModal.style.display = 'none';
+            }
+        });
+        // Also close calculator when clicking anywhere outside the modal content
+        document.addEventListener('mousedown', function(e) {
+            if (!calcModal.hidden && calcModal.style.display !== 'none') {
+                const modalContent = calcModal.querySelector('.modal-content');
+                if (modalContent && !modalContent.contains(e.target) && !openCalcBtn.contains(e.target)) {
+                    calcModal.hidden = true;
+                    calcModal.style.display = 'none';
+                }
             }
         });
     }
@@ -1298,3 +1310,23 @@ function resetTransactionForm() {
         });
     }
 })();
+
+// --- Chart Update Utility ---
+function updateAllCharts() {
+    // Re-render the trend chart if available
+    if (typeof renderTrendChart === 'function') {
+        renderTrendChart();
+    }
+    // Add other chart updates here if needed in the future
+    // console.log("Charts updated (placeholder)");
+}
+
+// Edit modal close on overlay click
+const editModal = document.getElementById('editModal');
+if (editModal) {
+    editModal.addEventListener('click', function(e) {
+        if (e.target === editModal) {
+            closeModal();
+        }
+    });
+}
