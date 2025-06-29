@@ -985,37 +985,95 @@ body {
     animation: fadeIn 0.5s ease-in-out;
 }
 
-/* --- Enhanced Responsive Styles for All Screens --- */
-@media (max-width: 900px) {
-    .container, .panel, .balance-card, .chart-container, .calculator-section, .transaction-form-container, .transactions-list {
-        width: 100% !important;
-        min-width: 0 !important;
-        padding: 12px !important;
-        border-radius: 12px !important;
+/* --- Enhanced Responsive Design for All Devices --- */
+
+@media (max-width: 1100px) {
+    .container {
+        flex-direction: column;
+        min-height: unset;
+        max-width: 100vw;
+        border-radius: 0;
     }
     .left-panel, .right-panel {
-        flex: 1 1 100%;
-        max-width: 100%;
+        flex: unset;
+        width: 100% !important;
+        min-width: 0 !important;
+        border-radius: 0 !important;
+        padding: 18px 8px !important;
     }
-    .form-row, .balance-summary, .transactions-header, .filter-controls {
-        flex-direction: column !important;
-        gap: 10px !important;
+    .right-panel {
+        gap: 18px;
+    }
+}
+
+@media (max-width: 900px) {
+    .container {
+        flex-direction: column;
+        min-height: unset;
+        max-width: 100vw;
+        border-radius: 0;
+    }
+    .left-panel, .right-panel {
+        flex: unset;
+        width: 100% !important;
+        min-width: 0 !important;
+        border-radius: 0 !important;
+        padding: 14px 4vw !important;
+    }
+    .right-panel {
+        gap: 14px;
+    }
+    .balance-card, .chart-container, .calculator-section, .transaction-form-container, .transactions-list {
+        border-radius: 10px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        min-height: unset;
+        max-width: 100vw;
+        border-radius: 0;
+    }
+    .left-panel, .right-panel {
+        flex: unset;
+        width: 100% !important;
+        min-width: 0 !important;
+        border-radius: 0 !important;
+        padding: 10px 2vw !important;
+    }
+    .right-panel {
+        gap: 10px;
+    }
+    .heading h1 {
+        font-size: 1.5rem;
+    }
+    .transaction-form-container h2, .transactions-header h2 {
+        font-size: 1.2rem;
+    }
+    .form-actions button, .btn, .action-btn {
+        font-size: 1em;
+        padding: 12px 0.8em;
     }
     .transaction-item {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        font-size: 15px !important;
+        font-size: 1em !important;
+        padding: 10px 4px !important;
     }
-    .footer-section {
-        position: static !important;
+    .calculator {
+        min-width: 0;
+        width: 100%;
+    }
+    .calculator-buttons button {
+        font-size: 1em;
+        padding: 10px;
+    }
+    .footer {
+        font-size: 12px;
+        padding: 8px 0;
     }
 }
 
 @media (max-width: 600px) {
-    body {
-        font-size: 15px;
-        padding: 0 2vw;
-    }
     .container, .panel, .balance-card, .chart-container, .calculator-section, .transaction-form-container, .transactions-list {
         width: 100% !important;
         min-width: 0 !important;
@@ -1043,10 +1101,13 @@ body {
     .empty-state {
         font-size: 1em;
     }
-    .footer-section {
+    .footer {
         position: static !important;
         font-size: 12px;
         padding: 8px 0;
+    }
+    .heading h1 {
+        font-size: 1.1rem;
     }
 }
 
@@ -1059,110 +1120,61 @@ body {
         font-size: 12px !important;
         padding: 6px 2px !important;
     }
-}
-
-/* Transitions and Effects */
-.transaction-item {
-    transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
-}
-
-.transaction-item.removing {
-    transform: translateX(100px);
-    opacity: 0;
-}
-
-.transaction-item.adding {
-    animation: slideIn 0.5s forwards;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(-100px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
+    .form-actions button, .btn, .action-btn {
+        font-size: 0.95em;
+        padding: 10px 0.5em;
     }
 }
 
-/* Focus styles for accessibility */
-button:focus, 
-input:focus, 
-select:focus {
-    outline: 3px solid rgba(108, 99, 255, 0.3);
-    outline-offset: 2px;
+/* Touch-friendly buttons and inputs */
+button, .btn, .action-btn, input, select {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 1em;
 }
 
-/* Glassmorphism effects */
-.glassmorphism {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+input, select {
+    font-size: 1em;
+    padding: 10px 8px;
+    border-radius: 6px;
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    :root {
-        --primary-color: #0000ff;
-        --secondary-color: #0000cc;
-        --accent-color: #00aa00;
-        --text-color: #000000;
-        --text-secondary: #333333;
-        --background-color: #ffffff;
-        --card-bg: #f0f0f0;
-        --border-color: #666666;
-        --income-color: #007700;
-        --expense-color: #cc0000;
+/* Make modals and overlays scrollable on small screens */
+.modal-content, .calculator-container {
+    max-height: 95vh;
+    overflow-y: auto;
+}
+
+/* Ensure chart and calculator fit on mobile */
+.chart-container, .calculator-section, .calculator {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+}
+
+/* Footer always visible but not intrusive */
+.footer {
+    position: static;
+    width: 100vw;
+    left: 0;
+    bottom: 0;
+    font-size: 13px;
+    padding: 8px 0;
+}
+
+/* Hide scrollbars on mobile for a cleaner look */
+@media (max-width: 600px) {
+    ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
     }
-    
-    [data-theme="dark"] {
-        --primary-color: #6666ff;
-        --secondary-color: #8888ff;
-        --accent-color: #00ff00;
-        --text-color: #ffffff;
-        --text-secondary: #cccccc;
-        --background-color: #000000;
-        --card-bg: #222222;
-        --border-color: #888888;
-        --income-color: #00ff00;
-        --expense-color: #ff0000;
-    }
-}
-
-/* Print styles */
-@media print {
     body {
-        background-color: white;
-        color: black;
-    }
-    
-    .container {
-        display: block;
-        box-shadow: none;
-        width: 100%;
-    }
-    
-    .left-panel {
-        background-color: white;
-        color: black;
-        page-break-after: always;
-    }
-    
-    .calculator-section,
-    .form-actions,
-    .theme-toggle {
-        display: none;
-    }
-    
-    .transaction-item {
-        break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid #ddd;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 }
 
+/* End Enhanced Responsive Design */
 .footer {
     background-color: var(--background-color);
     border-top: 1px solid var(--border-color);
