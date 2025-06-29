@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         openTrendModalBtn.addEventListener('click', function() {
             trendModal.hidden = false;
             trendModal.style.display = 'flex';
-            renderTrendChart();
+            window.ChartManager.renderTrendChart();
         });
         closeTrendModal.addEventListener('click', function() {
             trendModal.hidden = true;
@@ -995,7 +995,7 @@ function setupEventListeners() {
             openTrendModalBtn.addEventListener('click', function() {
                 trendModal.hidden = false;
                 trendModal.style.display = 'flex';
-                renderTrendChart();
+                window.ChartManager.renderTrendChart();
             });
             closeTrendModal.addEventListener('click', function() {
                 trendModal.hidden = true;
@@ -1228,6 +1228,7 @@ function resetTransactionForm() {
         return date.toLocaleString('default', { month: 'long', year: 'numeric' });
     }
 
+    let selectedMonthIndex = null;
     function renderTrendChart() {
         if (!trendChartCanvas) return;
         // Get transactions from global or localStorage
@@ -1241,6 +1242,15 @@ function resetTransactionForm() {
         const labels = Object.keys(monthly).sort();
         const incomeData = labels.map(m => monthly[m].income);
         const expenseData = labels.map(m => monthly[m].expense);
+        let displayLabels = labels.map(formatMonth);
+        let displayIncome = incomeData;
+        let displayExpense = expenseData;
+        // If a month is selected, show only that month
+        if (selectedMonthIndex !== null && labels[selectedMonthIndex]) {
+            displayLabels = [labels.map(formatMonth)[selectedMonthIndex]];
+            displayIncome = [incomeData[selectedMonthIndex]];
+            displayExpense = [expenseData[selectedMonthIndex]];
+        }
         if (trendChartInstance) {
             trendChartInstance.destroy();
         }
@@ -1254,17 +1264,23 @@ function resetTransactionForm() {
         trendChartInstance = new Chart(trendChartCanvas, {
             type: 'bar',
             data: {
-                labels: labels.map(formatMonth),
+                labels: displayLabels,
                 datasets: [
                     {
                         label: 'Income',
-                        data: incomeData,
-                        backgroundColor: 'rgba(0, 219, 222, 0.7)'
+                        data: displayIncome,
+                        backgroundColor: 'rgba(0, 219, 222, 0.7)',
+                        maxBarThickness: 18,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5
                     },
                     {
                         label: 'Expense',
-                        data: expenseData,
-                        backgroundColor: 'rgba(252, 0, 255, 0.7)'
+                        data: displayExpense,
+                        backgroundColor: 'rgba(252, 0, 255, 0.7)',
+                        maxBarThickness: 18,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5
                     }
                 ]
             },
@@ -1274,29 +1290,74 @@ function resetTransactionForm() {
                     legend: { position: 'top' },
                     title: { display: true, text: 'Income & Expense Trend by Month' },
                     tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
                         callbacks: {
                             label: function(context) {
                                 const type = context.dataset.label;
                                 const value = context.parsed.y;
                                 const month = context.chart.data.labels[context.dataIndex];
-                                return `${month} - ${type}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                                // Calculate total for this month
+                                const income = context.chart.data.datasets[0].data[context.dataIndex] || 0;
+                                const expense = context.chart.data.datasets[1].data[context.dataIndex] || 0;
+                                const total = income + expense;
+                                let percent = total > 0 ? (value / total * 100) : 0;
+                                percent = percent.toFixed(1);
+                                return `${month} — ${type}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${percent}% of total)`;
                             }
                         }
                     }
                 },
+                hover: {
+                    mode: 'index',
+                    intersect: false
+                },
+                onClick: (e, elements, chart) => {
+                    // Show tooltip and select month on bar click
+                    const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+                    if (points.length > 0) {
+                        // Find the index in the original labels array
+                        let idx = points[0].index;
+                        if (selectedMonthIndex === null) {
+                            selectedMonthIndex = idx;
+                        } else {
+                            // If already selected, reset
+                            selectedMonthIndex = null;
+                        }
+                        renderTrendChart();
+                        // Show tooltip for selected bar
+                        setTimeout(() => {
+                            if (trendChartInstance && selectedMonthIndex !== null) {
+                                const tooltipPoints = trendChartInstance.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+                                trendChartInstance.setActiveElements(tooltipPoints);
+                                trendChartInstance.tooltip.setActiveElements(tooltipPoints, {x: 0, y: tooltipPoints[0].datasetIndex});
+                                trendChartInstance.update();
+                            }
+                        }, 50);
+                    }
+                },
                 scales: {
                     y: { beginAtZero: true, title: { display: true, text: 'Amount ($)' } },
-                    x: { title: { display: true, text: 'Month' } }
+                    x: {
+                        title: { display: true, text: 'Month' },
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5
+                    }
                 }
             }
         });
     }
 
+    // Expose ChartManager globally
+    window.ChartManager = window.ChartManager || {};
+    window.ChartManager.renderTrendChart = renderTrendChart;
+
     if (openTrendModalBtn && trendModal && closeTrendModal) {
         openTrendModalBtn.addEventListener('click', function() {
             trendModal.hidden = false;
             trendModal.style.display = 'flex';
-            renderTrendChart();
+            window.ChartManager.renderTrendChart();
         });
         closeTrendModal.addEventListener('click', function() {
             trendModal.hidden = true;
@@ -1309,6 +1370,212 @@ function resetTransactionForm() {
             }
         });
     }
+})();
+
+// --- Trend Chart Controls Logic (Dropdown modal, then single month bar chart modal) ---
+(function() {
+    const openTrendModalBtn = document.getElementById('openTrendModalBtn');
+    const trendModal = document.getElementById('trendModal');
+    const trendMonthSelect = document.getElementById('trendMonthSelect');
+    const trendBackBtn = document.getElementById('trendBackBtn');
+    const trendChartCanvas = document.getElementById('trendChart');
+    const trendEmptyMsg = document.getElementById('trendEmptyMsg');
+    let trendDropdownMsg = document.getElementById('trendDropdownMsg');
+    if (!trendDropdownMsg) {
+        trendDropdownMsg = document.createElement('div');
+        trendDropdownMsg.id = 'trendDropdownMsg';
+        trendDropdownMsg.style.margin = '0 0 10px 0';
+        trendDropdownMsg.style.fontWeight = 'bold';
+        trendDropdownMsg.style.fontSize = '1.1em';
+        trendDropdownMsg.style.color = 'var(--text-color, #333)';
+        trendMonthSelect.parentNode.insertBefore(trendDropdownMsg, trendMonthSelect);
+    }
+    let lastMonthOptions = [];
+    let allMonthData = [];
+    let selectedMonthIndex = null;
+    let trendChartInstance = null;
+
+    // Helper to get sorted months and their data from transactions
+    function getSortedMonthsAndData() {
+        let tx = window.transactions;
+        if (!tx) {
+            try {
+                tx = JSON.parse(localStorage.getItem('transactions') || '[]');
+            } catch { tx = []; }
+        }
+        const monthly = {};
+        tx.forEach(t => {
+            const date = new Date(t.date);
+            if (!isNaN(date)) {
+                const ym = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                if (!monthly[ym]) monthly[ym] = { income: 0, expense: 0 };
+                if (t.type === 'income') monthly[ym].income += Number(t.amount);
+                else if (t.type === 'expense') monthly[ym].expense += Number(t.amount);
+            }
+        });
+        const months = Object.keys(monthly).sort();
+        const data = months.map(m => monthly[m]);
+        return { months, data };
+    }
+
+    // Helper to format month
+    function formatMonth(ym) {
+        const [year, month] = ym.split('-');
+        const date = new Date(year, month - 1);
+        return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+
+    // Populate dropdown (no 'All Months' option)
+    function populateMonthDropdown() {
+        if (!trendMonthSelect) return;
+        const { months, data } = getSortedMonthsAndData();
+        lastMonthOptions = months;
+        allMonthData = data;
+        trendMonthSelect.innerHTML = '';
+        months.forEach((ym, idx) => {
+            const opt = document.createElement('option');
+            opt.value = ym;
+            opt.textContent = formatMonth(ym);
+            trendMonthSelect.appendChild(opt);
+        });
+        trendMonthSelect.value = '';
+        trendBackBtn.style.display = 'none';
+        selectedMonthIndex = null;
+        // Hide chart, show dropdown and message
+        if (trendChartCanvas) trendChartCanvas.style.display = 'none';
+        if (trendEmptyMsg) trendEmptyMsg.style.display = 'none';
+        trendMonthSelect.style.display = 'inline-block';
+        if (trendDropdownMsg) trendDropdownMsg.textContent = 'Select month to see flow';
+    }
+
+    // Show only the selected month's bar chart (income/expense for that month)
+    function showSingleMonthBarChart(idx) {
+        if (!trendChartCanvas) return;
+        if (trendChartInstance) {
+            trendChartInstance.destroy();
+        }
+        if (!allMonthData[idx]) {
+            trendChartCanvas.style.display = 'none';
+            if (trendEmptyMsg) trendEmptyMsg.style.display = 'flex';
+            return;
+        }
+        trendChartCanvas.style.display = 'block';
+        if (trendEmptyMsg) trendEmptyMsg.style.display = 'none';
+        const monthLabel = formatMonth(lastMonthOptions[idx]);
+        trendChartInstance = new Chart(trendChartCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Income', 'Expense'],
+                datasets: [{
+                    label: monthLabel,
+                    data: [allMonthData[idx].income, allMonthData[idx].expense],
+                    backgroundColor: [
+                        'rgba(0, 219, 222, 0.7)',
+                        'rgba(252, 0, 255, 0.7)'
+                    ],
+                    maxBarThickness: 40,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: monthLabel + ' Income & Expense' },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Amount ($)' } },
+                    x: { title: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Handle dropdown change
+    function handleMonthSelectChange() {
+        const val = trendMonthSelect.value;
+        if (!val) {
+            // No month selected, keep chart hidden
+            selectedMonthIndex = null;
+            if (trendChartCanvas) trendChartCanvas.style.display = 'none';
+            if (trendEmptyMsg) trendEmptyMsg.style.display = 'none';
+            trendBackBtn.style.display = 'none';
+            if (trendDropdownMsg) trendDropdownMsg.textContent = 'Select month to see flow';
+        } else {
+            // Find index and show chart for that month
+            const idx = lastMonthOptions.indexOf(val);
+            if (idx !== -1) {
+                selectedMonthIndex = idx;
+                trendBackBtn.style.display = 'inline-block';
+                trendMonthSelect.style.display = 'none';
+                if (trendDropdownMsg) trendDropdownMsg.textContent = '';
+                showSingleMonthBarChart(idx);
+            }
+        }
+    }
+
+    // Handle back button
+    function handleBackBtn() {
+        trendMonthSelect.value = '';
+        selectedMonthIndex = null;
+        trendBackBtn.style.display = 'none';
+        trendMonthSelect.style.display = 'inline-block';
+        if (trendDropdownMsg) trendDropdownMsg.textContent = 'Select month to see flow';
+        if (trendChartCanvas) trendChartCanvas.style.display = 'none';
+        if (trendEmptyMsg) trendEmptyMsg.style.display = 'none';
+        if (trendChartInstance) {
+            trendChartInstance.destroy();
+            trendChartInstance = null;
+        }
+    }
+
+    // Open modal: show only dropdown
+    if (openTrendModalBtn && trendModal) {
+        openTrendModalBtn.addEventListener('click', function() {
+            trendModal.hidden = false;
+            trendModal.style.display = 'flex';
+            populateMonthDropdown();
+        });
+    }
+    // Close modal
+    const closeTrendModal = document.getElementById('closeTrendModal');
+    if (closeTrendModal && trendModal) {
+        closeTrendModal.addEventListener('click', function() {
+            trendModal.hidden = true;
+            trendModal.style.display = 'none';
+            handleBackBtn();
+        });
+    }
+    // Overlay click closes modal
+    if (trendModal) {
+        trendModal.addEventListener('click', function(e) {
+            if (e.target === trendModal) {
+                trendModal.hidden = true;
+                trendModal.style.display = 'none';
+                handleBackBtn();
+            }
+        });
+    }
+    // Wire up events
+    if (trendMonthSelect) {
+        trendMonthSelect.addEventListener('change', handleMonthSelectChange);
+    }
+    if (trendBackBtn) {
+        trendBackBtn.addEventListener('click', handleBackBtn);
+    }
+    // On DOMContentLoaded, ensure dropdown is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        populateMonthDropdown();
+    });
 })();
 
 // --- Chart Update Utility ---
