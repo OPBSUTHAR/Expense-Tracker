@@ -17,8 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
             calcModal.hidden = false;
             calcModal.style.display = 'flex';
         });
-        closeCalcModal.addEventListener('click', function() {
-            calcModal.hidden = true;
+         closeCalcModal.addEventListener('click', function() {             calcModal.hidden = true;
             calcModal.style.display = 'none';
         });
         calcModal.addEventListener('click', function(e) {
@@ -57,30 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Export event listener attached');
     }
     
-    // Chart modal open/close logic
-    const openChartModalBtn = document.getElementById('openChartModalBtn');
-    const chartModal = document.getElementById('chartModal');
-    const closeChartModal = document.getElementById('closeChartModal');
-    if (openChartModalBtn && chartModal && closeChartModal) {
-        openChartModalBtn.addEventListener('click', function() {
-            chartModal.hidden = false;
-            chartModal.style.display = 'flex';
-            // Initialize or update chart when modal opens
-            if (!chart) initializeChart();
-            else updateChart();
-        });
-        closeChartModal.addEventListener('click', function() {
-            chartModal.hidden = true;
-            chartModal.style.display = 'none';
-        });
-        chartModal.addEventListener('click', function(e) {
-            if (e.target === chartModal) {
-                chartModal.hidden = true;
-                chartModal.style.display = 'none';
-            }
-        });
-    }
-    
     // Trend modal open/close logic
     const openTrendModalBtn = document.getElementById('openTrendModalBtn');
     const trendModal = document.getElementById('trendModal');
@@ -89,8 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
         openTrendModalBtn.addEventListener('click', function() {
             trendModal.hidden = false;
             trendModal.style.display = 'flex';
-            if (!trendChart) initializeTrendChart();
-            else updateTrendChart();
+            renderTrendChart();
         });
         closeTrendModal.addEventListener('click', function() {
             trendModal.hidden = true;
@@ -110,7 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Global variables
 let transactions = [];
-let chart = null;
 let trendChart = null;
 let lastDeletedTransaction = null;
 let undoTimeoutId = null;
@@ -159,9 +132,6 @@ function initApp() {
         
         // Update UI summaries
         updateSummaryUI();
-        
-        // Initialize Chart
-        initializeChart();
         
         // Set up event listeners
         setupEventListeners();
@@ -763,167 +733,6 @@ function closeModal() {
 }
 
 // ======================
-// CHART FUNCTIONS
-// ======================
-function initializeChart() {
-    try {
-        const ctx = document.getElementById('expenseChart').getContext('2d');
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Expenses by Category',
-                    data: [],
-                    backgroundColor: [],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.raw || 0;
-                                return `${label}: $${formatCurrency(value)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Amount ($)' }
-                    },
-                    x: {
-                        title: { display: true, text: 'Category' }
-                    }
-                }
-            }
-        });
-        updateChart();
-    } catch (error) {
-        console.error('Error initializing chart:', error);
-    }
-}
-
-function updateChart() {
-    try {
-        if (!chart) return;
-        const expenses = transactions.filter(t => t.type === TRANSACTION_TYPES.EXPENSE);
-        if (expenses.length === 0) {
-            document.getElementById('expenseChart').style.display = 'none';
-            document.querySelector('.chart-placeholder .empty-chart-message').style.display = 'flex';
-            return;
-        }
-        document.getElementById('expenseChart').style.display = 'block';
-        document.querySelector('.chart-placeholder .empty-chart-message').style.display = 'none';
-        // Group by category
-        const categories = {};
-        expenses.forEach(expense => {
-            if (!categories[expense.category]) {
-                categories[expense.category] = 0;
-            }
-            categories[expense.category] += expense.amount;
-        });
-        const labels = Object.keys(categories);
-        const data = Object.values(categories);
-        const backgroundColors = generateChartColors(labels.length);
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = data;
-        chart.data.datasets[0].backgroundColor = backgroundColors;
-        chart.update();
-    } catch (error) {
-        console.error('Error updating chart:', error);
-    }
-}
-
-function initializeTrendChart() {
-    try {
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        if (trendChart) trendChart.destroy();
-        trendChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Income',
-                        data: [],
-                        backgroundColor: '#3ecf8e',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Expense',
-                        data: [],
-                        backgroundColor: '#ff6b6b',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: $${formatCurrency(context.raw)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: { display: true, text: 'Month' }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Amount ($)' }
-                    }
-                }
-            }
-        });
-        updateTrendChart();
-    } catch (error) {
-        console.error('Error initializing trend chart:', error);
-    }
-}
-
-function updateTrendChart() {
-    try {
-        if (!trendChart) return;
-        // Group by month
-        const byMonth = {};
-        transactions.forEach(t => {
-            const d = new Date(t.date);
-            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            if (!byMonth[key]) byMonth[key] = { income: 0, expense: 0 };
-            if (t.type === TRANSACTION_TYPES.INCOME) byMonth[key].income += Number(t.amount);
-            if (t.type === TRANSACTION_TYPES.EXPENSE) byMonth[key].expense += Number(t.amount);
-        });
-        const months = Object.keys(byMonth).sort();
-        const incomeData = months.map(m => byMonth[m].income);
-        const expenseData = months.map(m => byMonth[m].expense);
-        trendChart.data.labels = months.length ? months : [];
-        trendChart.data.datasets[0].data = incomeData;
-        trendChart.data.datasets[1].data = expenseData;
-        trendChart.update();
-        // Show/hide empty message
-        document.getElementById('trendChart').style.display = months.length ? 'block' : 'none';
-        document.getElementById('trendEmptyMsg').style.display = months.length ? 'none' : 'flex';
-    } catch (error) {
-        console.error('Error updating trend chart:', error);
-    }
-}
-
-// ======================
 // THEME FUNCTIONS
 // ======================
 function initializeTheme() {
@@ -1174,8 +983,7 @@ function setupEventListeners() {
             openTrendModalBtn.addEventListener('click', function() {
                 trendModal.hidden = false;
                 trendModal.style.display = 'flex';
-                if (!trendChart) initializeTrendChart();
-                else updateTrendChart();
+                renderTrendChart();
             });
             closeTrendModal.addEventListener('click', function() {
                 trendModal.hidden = true;
@@ -1249,6 +1057,98 @@ function toggleManual() {
 }
 
 // ======================
+// CALCULATOR SETUP
+// ======================
+function setupCalculator() {
+    try {
+        const calcModal = document.getElementById('calculatorModal');
+        const display = document.getElementById('calcDisplay');
+        const buttons = document.querySelectorAll('.calc-btn');
+        let currentInput = '';
+        let lastCalculation = '';
+
+        if (!display || !buttons.length) return;
+
+        // Helper: update display
+        function updateDisplay(value) {
+            display.value = value;
+        }
+
+        // Button click logic
+        buttons.forEach(btn => {
+            btn.onclick = function () {
+                const val = btn.dataset.value;
+                if (!val) return;
+                if (val === 'C') {
+                    currentInput = '';
+                    updateDisplay('');
+                } else if (val === '←') {
+                    currentInput = currentInput.slice(0, -1);
+                    updateDisplay(currentInput);
+                } else if (val === '=') {
+                    try {
+                        // Only allow numbers and basic operators
+                        if (/^[0-9+\-*/. ()]+$/.test(currentInput)) {
+                            // eslint-disable-next-line no-eval
+                            let result = eval(currentInput);
+                            if (typeof result === 'number' && isFinite(result)) {
+                                updateDisplay(result);
+                                lastCalculation = currentInput + ' = ' + result;
+                                currentInput = result.toString();
+                            } else {
+                                updateDisplay('Error');
+                                currentInput = '';
+                            }
+                        } else {
+                            updateDisplay('Error');
+                            currentInput = '';
+                        }
+                    } catch {
+                        updateDisplay('Error');
+                        currentInput = '';
+                    }
+                } else {
+                    // Prevent multiple decimals in a number
+                    if (val === '.' && /\.?$/.test(currentInput.split(/[-+*/]/).pop())) {
+                        if (currentInput.split(/[-+*/]/).pop().includes('.')) return;
+                    }
+                    currentInput += val;
+                    updateDisplay(currentInput);
+                }
+            };
+        });
+
+        // Keyboard support
+        display.onkeydown = function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const eqBtn = Array.from(buttons).find(b => b.dataset.value === '=');
+                if (eqBtn) eqBtn.click();
+            } else if (e.key === 'Escape') {
+                currentInput = '';
+                updateDisplay('');
+            }
+        };
+
+        // Optional: clear input when modal closes
+        if (calcModal) {
+            calcModal.addEventListener('hide', function () {
+                currentInput = '';
+                updateDisplay('');
+            });
+        }
+    } catch (error) {
+        console.error('Error setting up calculator:', error);
+    }
+}
+
+// ======================
+// CALCULATOR INTEGRATION
+// ======================
+function setupCalculatorIntegration() {
+    setupCalculator();
+}
+
 // --- Patch setupTransactionEventListeners to remove checkbox logic ---
 function setupTransactionEventListeners() {
     const transactionsList = document.getElementById('transactionsList');
@@ -1275,3 +1175,126 @@ setupEventListeners = function() {
     origSetupEventListeners && origSetupEventListeners();
 };
 
+// Reset the add transaction form fields and error states
+function resetTransactionForm() {
+    const form = document.getElementById('transactionForm');
+    if (form) {
+        form.reset();
+        // Optionally, clear any custom error messages or UI highlights here
+    } else {
+        console.warn('Transaction form not found');
+    }
+}
+
+// --- Trend Chart Logic (restored, modern, only for #trendChart) ---
+(function() {
+    let trendChartInstance = null;
+    const openTrendModalBtn = document.getElementById('openTrendModalBtn');
+    const trendModal = document.getElementById('trendModal');
+    const closeTrendModal = document.getElementById('closeTrendModal');
+    const trendChartCanvas = document.getElementById('trendChart');
+    const trendEmptyMsg = document.getElementById('trendEmptyMsg');
+
+    function getMonthlyTotals(transactions) {
+        // Returns { 'YYYY-MM': { income: 0, expense: 0 } }
+        const monthly = {};
+        transactions.forEach(t => {
+            const date = new Date(t.date);
+            if (isNaN(date)) return;
+            const ym = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+            if (!monthly[ym]) monthly[ym] = { income: 0, expense: 0 };
+            if (t.type === 'income') monthly[ym].income += Number(t.amount);
+            else if (t.type === 'expense') monthly[ym].expense += Number(t.amount);
+        });
+        return monthly;
+    }
+
+    function formatMonth(ym) {
+        // ym = 'YYYY-MM' to 'Month YYYY'
+        const [year, month] = ym.split('-');
+        const date = new Date(year, month - 1);
+        return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+
+    function renderTrendChart() {
+        if (!trendChartCanvas) return;
+        // Get transactions from global or localStorage
+        let tx = window.transactions;
+        if (!tx) {
+            try {
+                tx = JSON.parse(localStorage.getItem('transactions') || '[]');
+            } catch { tx = []; }
+        }
+        const monthly = getMonthlyTotals(tx || []);
+        const labels = Object.keys(monthly).sort();
+        const incomeData = labels.map(m => monthly[m].income);
+        const expenseData = labels.map(m => monthly[m].expense);
+        if (trendChartInstance) {
+            trendChartInstance.destroy();
+        }
+        if (labels.length === 0) {
+            trendChartCanvas.style.display = 'none';
+            if (trendEmptyMsg) trendEmptyMsg.style.display = 'flex';
+            return;
+        }
+        trendChartCanvas.style.display = 'block';
+        if (trendEmptyMsg) trendEmptyMsg.style.display = 'none';
+        trendChartInstance = new Chart(trendChartCanvas, {
+            type: 'bar',
+            data: {
+                labels: labels.map(formatMonth),
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: incomeData,
+                        backgroundColor: 'rgba(0, 219, 222, 0.7)'
+                    },
+                    {
+                        label: 'Expense',
+                        data: expenseData,
+                        backgroundColor: 'rgba(252, 0, 255, 0.7)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Income & Expense Trend by Month' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const type = context.dataset.label;
+                                const value = context.parsed.y;
+                                const month = context.chart.data.labels[context.dataIndex];
+                                return `${month} - ${type}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Amount ($)' } },
+                    x: { title: { display: true, text: 'Month' } }
+                }
+            }
+        });
+    }
+
+    if (openTrendModalBtn && trendModal && closeTrendModal) {
+        openTrendModalBtn.addEventListener('click', function() {
+            trendModal.hidden = false;
+            trendModal.style.display = 'flex';
+            renderTrendChart();
+        });
+        closeTrendModal.addEventListener('click', function() {
+            trendModal.hidden = true;
+            trendModal.style.display = 'none';
+        });
+        trendModal.addEventListener('click', function(e) {
+            if (e.target === trendModal) {
+                trendModal.hidden = true;
+                trendModal.style.display = 'none';
+            }
+        });
+    }
+})();
